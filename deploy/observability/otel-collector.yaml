@@ -1,0 +1,47 @@
+# A "espinha" em um arquivo: recebe OTLP de TODO bloco (cliente, gateway, edge,
+# serviços, workers de IA, stores) e roteia por sinal. Nenhum dado trafega,
+# é gerado ou é perdido sem passar por aqui.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch: {}
+  # Correlação nasce na borda: garante service.name em tudo que passa.
+  resource:
+    attributes:
+      - key: deployment.environment
+        value: dev
+        action: upsert
+
+exporters:
+  # Logs estruturados, correlacionados por trace-id.
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+  # Fluxo individual de cada cliente, ponta a ponta, span a span.
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+  # Métricas (e custo, quando o OpenCost entrar) no mesmo TSDB da linha.
+  prometheusremotewrite:
+    endpoint: http://victoriametrics:8428/api/v1/write
+
+service:
+  pipelines:
+    logs:
+      receivers: [otlp]
+      processors: [resource, batch]
+      exporters: [otlphttp/loki]
+    traces:
+      receivers: [otlp]
+      processors: [resource, batch]
+      exporters: [otlp/tempo]
+    metrics:
+      receivers: [otlp]
+      processors: [resource, batch]
+      exporters: [prometheusremotewrite]

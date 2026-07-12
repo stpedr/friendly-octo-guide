@@ -2,10 +2,10 @@ name: telemetry-ingest
 
 on:
   pull_request:
-    paths: ['src/Telemetry.Ingest/**', 'schemas/**']
+    paths: ['src/Telemetry.Ingest/**', 'src/Platform/**', 'schemas/**']
   push:
     branches: [main]
-    paths: ['src/Telemetry.Ingest/**', 'schemas/**']
+    paths: ['src/Telemetry.Ingest/**', 'src/Platform/**', 'schemas/**']
 
 jobs:
   ci:

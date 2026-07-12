@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Ai.Domain/Ai.Domain.csproj" />
+  <Project Path="Ai.Router.Worker/Ai.Router.Worker.csproj" />
+  <Project Path="Ai.Worker.Llm/Ai.Worker.Llm.csproj" />
+  <Project Path="Ai.Tests/Ai.Tests.csproj" />
+</Solution>

@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: predictive
+  namespace: linha
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: predictive }
+  template:
+    metadata:
+      labels: { app: predictive }
+    spec:
+      containers:
+        - name: predictive
+          image: harbor.interno/plataforma/predictive:latest
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.observabilidade:4317
+            - name: Kafka__Bootstrap
+              value: kafka.transporte:9092
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { memory: 512Mi }   # um detector por sensor vive em memória

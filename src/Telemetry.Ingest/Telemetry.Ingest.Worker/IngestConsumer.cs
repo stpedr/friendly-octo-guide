@@ -1,4 +1,5 @@
 using Confluent.Kafka;
+using Platform.Contracts;
 using Telemetry.Ingest.Domain.QualityGate;
 using Gate = Telemetry.Ingest.Domain.QualityGate.QualityGate;
 
@@ -13,13 +14,20 @@ namespace Telemetry.Ingest.Worker;
 /// </summary>
 public sealed partial class IngestConsumer(
     IngestOptions options,
+    ReadingSink sink,
     ILogger<IngestConsumer> log) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        await sink.EnsureSchemaAsync(stoppingToken);
+
         // Limites viriam do serviço de cadastro de sensores; fixo por enquanto (fase 1 troca por cache do Postgres).
         var gate = new Gate(
-            limitsBySensor: new Dictionary<string, SensorLimits> { ["temp-forno-01"] = new(-40, 900) },
+            limitsBySensor: new Dictionary<string, SensorLimits>
+            {
+                ["temp-forno-01"] = new(-40, 900),
+                ["pressao-linha-02"] = new(0, 400),
+            },
             maxClockDrift: TimeSpan.FromSeconds(5),
             maxStaleness: TimeSpan.FromMinutes(10));
 
@@ -40,19 +48,33 @@ public sealed partial class IngestConsumer(
             var result = consumer.Consume(stoppingToken);
             using var activity = IngestTelemetry.Activity.StartActivity("ingest.reading");
 
-            var reading = AvroCodec.Decode(result.Message.Value, receivedAt: DateTimeOffset.UtcNow);
+            SensorReading reading;
+            try
+            {
+                var record = SensorReadingCodec.Decode(result.Message.Value);
+                reading = new SensorReading(record.SensorId, record.Value, record.MeasuredAt, DateTimeOffset.UtcNow);
+            }
+            catch (FormatException)
+            {
+                // Payload que nem decodifica também não se perde — quarentena com motivo próprio.
+                await sink.QuarantineAsync(result.Message, "MalformedPayload", stoppingToken);
+                IngestTelemetry.Quarantined.Add(1, new KeyValuePair<string, object?>("reason", "MalformedPayload"));
+                consumer.Commit(result);
+                continue;
+            }
+
             activity?.SetTag("sensor.id", reading.SensorId);
             IngestTelemetry.LagSeconds.Record((reading.ReceivedAt - reading.MeasuredAt).TotalSeconds);
 
             var verdict = gate.Evaluate(reading);
             if (verdict.Accepted)
             {
-                await Sink.WriteAsync(options.PostgresConnection, reading, stoppingToken); // idempotente (invariante 2)
+                await sink.WriteAsync(reading, stoppingToken); // idempotente (invariante 2)
                 IngestTelemetry.Accepted.Add(1);
             }
             else
             {
-                await Sink.QuarantineAsync(options, result.Message, verdict.Reason, stoppingToken); // invariante 1
+                await sink.QuarantineAsync(result.Message, verdict.Reason.ToString(), stoppingToken); // invariante 1
                 IngestTelemetry.Quarantined.Add(1, new KeyValuePair<string, object?>("reason", verdict.Reason));
                 LogQuarantined(reading.SensorId, verdict.Reason);
             }
@@ -66,23 +88,4 @@ public sealed partial class IngestConsumer(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Leitura em quarentena: {Sensor} · {Reason}")]
     private partial void LogQuarantined(string sensor, RejectionReason reason);
-}
-
-// Stubs de infra — implementação real entra na semana 1 da fase 1.
-// Mantidos fora do Domain de propósito: a lógica testável não conhece Kafka nem SQL.
-internal static class AvroCodec
-{
-    public static SensorReading Decode(byte[] payload, DateTimeOffset receivedAt) =>
-        throw new NotImplementedException("Desserialização Avro via Schema Registry — schemas/sensor-reading.avsc");
-}
-
-internal static class Sink
-{
-    public static Task WriteAsync(string connectionString, SensorReading reading, CancellationToken ct) =>
-        throw new NotImplementedException(
-            "INSERT INTO telemetria (sensor_id, measured_at, value) VALUES (...) ON CONFLICT DO NOTHING");
-
-    public static Task QuarantineAsync(IngestOptions options, Message<string, byte[]> original,
-        RejectionReason reason, CancellationToken ct) =>
-        throw new NotImplementedException("Produce no tópico de quarentena com header 'reason'");
 }

@@ -1,0 +1,25 @@
+# Namespace por domínio — isolamento de RBAC, quota e NetworkPolicy por área.
+# O ArgoCD/Flux aplica isto antes de qualquer workload (fase 1).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: acesso        # gateway, identity
+  labels: { dominio: acesso }
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nucleo        # core-execution, notifications
+  labels: { dominio: nucleo }
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: linha         # edge, ingest, predictive, decision-engine
+  labels: { dominio: linha }
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ia            # router, workers de modelo, chatbot
+  labels: { dominio: ia }

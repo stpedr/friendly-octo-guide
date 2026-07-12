@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-router
+  namespace: ia
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: ai-router }
+  template:
+    metadata:
+      labels: { app: ai-router }
+    spec:
+      containers:
+        - name: ai-router
+          image: harbor.interno/plataforma/ai-router:latest
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.observabilidade:4317
+            - name: Kafka__Bootstrap
+              value: kafka.transporte:9092
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 256Mi }
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: ai-router
+  namespace: ia
+spec:
+  scaleTargetRef:
+    name: ai-router
+  minReplicaCount: 1
+  maxReplicaCount: 4
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: kafka.transporte:9092
+        consumerGroup: ai-router
+        topic: ai.jobs.v1
+        lagThreshold: "1000"

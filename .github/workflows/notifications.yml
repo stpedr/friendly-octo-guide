@@ -1,0 +1,16 @@
+name: notifications
+
+on:
+  pull_request:
+    paths: ['src/Notifications/**', 'src/Platform/**', 'schemas/**']
+  push:
+    branches: [main]
+    paths: ['src/Notifications/**', 'src/Platform/**', 'schemas/**']
+
+jobs:
+  ci:
+    uses: ./.github/workflows/_dotnet-service.yml
+    with:
+      service-path: src/Notifications
+      service-name: notifications
+      coverage-threshold: 80

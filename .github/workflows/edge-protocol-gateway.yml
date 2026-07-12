@@ -1,0 +1,16 @@
+name: edge-protocol-gateway
+
+on:
+  pull_request:
+    paths: ['src/Edge.ProtocolGateway/**', 'src/Platform/**', 'schemas/**']
+  push:
+    branches: [main]
+    paths: ['src/Edge.ProtocolGateway/**', 'src/Platform/**', 'schemas/**']
+
+jobs:
+  ci:
+    uses: ./.github/workflows/_dotnet-service.yml
+    with:
+      service-path: src/Edge.ProtocolGateway
+      service-name: edge-protocol-gateway
+      coverage-threshold: 80

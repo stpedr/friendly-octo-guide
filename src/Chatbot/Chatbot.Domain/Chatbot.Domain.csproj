@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Regra de negócio pura. NUNCA adicionar referência de infra aqui
+       (Kafka, HTTP, vLLM...) — é o que mantém a suíte de testes em segundos. -->
+  <ItemGroup>
+    <ProjectReference Include="../../Platform/Platform.AccessControl/Platform.AccessControl.csproj" />
+  </ItemGroup>
+</Project>

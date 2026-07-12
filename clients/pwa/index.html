@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f172a">
+  <title>plataforma-linha</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Core único: este mesmo bundle roda como PWA instalável e dentro dos shells
+       Tauri (desktop/mobile). Nada aqui depende de Electron nem de API de SO. -->
+  <main id="app">
+    <!-- Etapa 1: senha. NUNCA emite sessão sozinha. -->
+    <section id="login-step" class="card">
+      <h1>plataforma-linha</h1>
+      <form id="login-form">
+        <label>Usuário <input name="username" autocomplete="username" required></label>
+        <label>Senha <input name="password" type="password" autocomplete="current-password" required></label>
+        <button type="submit">Entrar</button>
+      </form>
+      <p class="hint">dev: admin/admin-dev ou operador/operador-dev</p>
+    </section>
+
+    <!-- Etapa 2: TOTP do app authenticator fecha o login (RFC 6238). -->
+    <section id="totp-step" class="card" hidden>
+      <h1>Código do authenticator</h1>
+      <form id="totp-form">
+        <label>Código de 6 dígitos
+          <input name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required>
+        </label>
+        <button type="submit">Confirmar</button>
+      </form>
+    </section>
+
+    <!-- Painel de linha: telemetria ao vivo via WSS, sem polling. -->
+    <section id="panel" class="card" hidden>
+      <header>
+        <h1>Painel de linha</h1>
+        <span id="user-badge"></span>
+        <button id="logout" type="button">Sair</button>
+      </header>
+      <div id="sensors" class="sensors" aria-live="polite"></div>
+      <p id="conn-state" class="hint">conectando à telemetria…</p>
+    </section>
+
+    <p id="error" class="error" role="alert" hidden></p>
+  </main>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

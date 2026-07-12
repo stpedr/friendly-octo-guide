@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Notifications.Domain/Notifications.Domain.csproj" />
+  <Project Path="Notifications.Worker/Notifications.Worker.csproj" />
+  <Project Path="Notifications.Tests/Notifications.Tests.csproj" />
+</Solution>

@@ -17,6 +17,10 @@ on:
         required: false
         type: number
         default: 80
+      dockerfile:              # default: <service-path>/Dockerfile; blocos com 2 binários passam o seu
+        required: false
+        type: string
+        default: ''
 
 jobs:
   # ── Gate 00: TDD ──────────────────────────────────────────────
@@ -79,7 +83,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build da imagem
         # contexto = raiz do repo: o Dockerfile copia Directory.Build.props e src/ de lá
-        run: docker build -f ${{ inputs.service-path }}/Dockerfile -t ${{ inputs.service-name }}:${{ github.sha }} .
+        run: docker build -f ${{ inputs.dockerfile != '' && inputs.dockerfile || format('{0}/Dockerfile', inputs.service-path) }} -t ${{ inputs.service-name }}:${{ github.sha }} .
       - name: Scan de vulnerabilidades (Trivy) — CRITICAL bloqueia
         uses: aquasecurity/trivy-action@master
         with:

@@ -1,0 +1,17 @@
+name: ai-worker-llm
+
+on:
+  pull_request:
+    paths: ['src/Ai/**', 'src/Platform/**', 'schemas/**']
+  push:
+    branches: [main]
+    paths: ['src/Ai/**', 'src/Platform/**', 'schemas/**']
+
+jobs:
+  ci:
+    uses: ./.github/workflows/_dotnet-service.yml
+    with:
+      service-path: src/Ai
+      service-name: ai-worker-llm
+      coverage-threshold: 80
+      dockerfile: src/Ai/Dockerfile.worker-llm

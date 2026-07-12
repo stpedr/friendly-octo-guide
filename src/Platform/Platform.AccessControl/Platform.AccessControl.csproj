@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Política de acesso compartilhada: o Identity emite as claims, o Gateway (e qualquer
+       serviço que precise de defesa em profundidade) avalia com a MESMA semântica.
+       Pura como um Domain: nada de infra aqui. -->
+</Project>

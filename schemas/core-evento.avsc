@@ -1,0 +1,13 @@
+{
+  "type": "record",
+  "name": "CoreEvent",
+  "namespace": "core.eventos.v1",
+  "doc": "Evento de domínio do Core.Execution, publicado pelo relay do outbox. A chave da mensagem é o id do registro do outbox — consumidor deduplica por ela. Encoding JSON na fase 0.",
+  "fields": [
+    { "name": "order_id", "type": { "type": "string", "logicalType": "uuid" } },
+    { "name": "type", "type": "string", "doc": "ordem.liberada | ordem.iniciada | ordem.concluida | ordem.abortada" },
+    { "name": "occurred_at", "type": { "type": "long", "logicalType": "timestamp-millis" } },
+    { "name": "line", "type": "string" },
+    { "name": "state", "type": "string" }
+  ]
+}

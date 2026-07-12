@@ -9,5 +9,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../Telemetry.Ingest.Domain/Telemetry.Ingest.Domain.csproj" />
+    <ProjectReference Include="../../Platform/Platform.Contracts/Platform.Contracts.csproj" />
   </ItemGroup>
 </Project>

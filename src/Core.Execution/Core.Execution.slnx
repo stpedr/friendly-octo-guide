@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Core.Execution.Domain/Core.Execution.Domain.csproj" />
+  <Project Path="Core.Execution.Api/Core.Execution.Api.csproj" />
+  <Project Path="Core.Execution.Tests/Core.Execution.Tests.csproj" />
+</Solution>

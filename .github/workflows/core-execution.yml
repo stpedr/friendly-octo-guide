@@ -1,0 +1,16 @@
+name: core-execution
+
+on:
+  pull_request:
+    paths: ['src/Core.Execution/**', 'src/Platform/**', 'schemas/**']
+  push:
+    branches: [main]
+    paths: ['src/Core.Execution/**', 'src/Platform/**', 'schemas/**']
+
+jobs:
+  ci:
+    uses: ./.github/workflows/_dotnet-service.yml
+    with:
+      service-path: src/Core.Execution
+      service-name: core-execution
+      coverage-threshold: 80

@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk.Worker">
   <ItemGroup>
     <PackageReference Include="Confluent.Kafka" Version="2.15.0" />
-    <PackageReference Include="Confluent.SchemaRegistry.Serdes.Avro" Version="2.15.0" />
     <PackageReference Include="Npgsql" Version="10.0.3" />
     <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.16.0" />
@@ -10,5 +9,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../Telemetry.Ingest.Domain/Telemetry.Ingest.Domain.csproj" />
+    <ProjectReference Include="../../Platform/Platform.Contracts/Platform.Contracts.csproj" />
   </ItemGroup>
 </Project>

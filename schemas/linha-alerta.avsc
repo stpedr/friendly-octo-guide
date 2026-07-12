@@ -1,0 +1,13 @@
+{
+  "type": "record",
+  "name": "LineAlert",
+  "namespace": "linha.alertas.v1",
+  "doc": "Alerta da linha (anomalia do Predictive, regra do Alertmanager). Encoding JSON na fase 0. Compatibilidade BACKWARD obrigatória.",
+  "fields": [
+    { "name": "id", "type": { "type": "string", "logicalType": "uuid" } },
+    { "name": "title", "type": "string" },
+    { "name": "body", "type": "string" },
+    { "name": "severity", "type": { "type": "enum", "name": "Severity", "symbols": ["Info", "Warning", "Critical"] } },
+    { "name": "raised_at", "type": { "type": "long", "logicalType": "timestamp-millis" } }
+  ]
+}

@@ -28,6 +28,7 @@ builder.Services.AddOpenTelemetry()
         .AddOtlpExporter());
 
 builder.Services.AddSingleton(IngestOptions.From(builder.Configuration));
+builder.Services.AddSingleton<ReadingSink>();
 builder.Services.AddHostedService<IngestConsumer>();
 
 await builder.Build().RunAsync();

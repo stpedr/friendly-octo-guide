@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Regra de negócio pura do subsistema de IA (router + workers).
+       NUNCA adicionar referência de infra aqui — é o que mantém a suíte em segundos. -->
+</Project>

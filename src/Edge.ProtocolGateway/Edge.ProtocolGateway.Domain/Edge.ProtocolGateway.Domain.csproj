@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Regra de negócio pura. NUNCA adicionar referência de infra aqui
+       (Kafka, MQTT, HTTP...) — é o que mantém a suíte de testes em segundos. -->
+</Project>

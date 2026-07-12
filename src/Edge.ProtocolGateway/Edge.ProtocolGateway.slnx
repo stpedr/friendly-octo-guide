@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Edge.ProtocolGateway.Domain/Edge.ProtocolGateway.Domain.csproj" />
+  <Project Path="Edge.ProtocolGateway.Worker/Edge.ProtocolGateway.Worker.csproj" />
+  <Project Path="Edge.ProtocolGateway.Tests/Edge.ProtocolGateway.Tests.csproj" />
+</Solution>

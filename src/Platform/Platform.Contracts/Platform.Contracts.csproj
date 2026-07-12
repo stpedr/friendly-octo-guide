@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Contratos dos tópicos Kafka: espelho em C# do que está em schemas/.
+       Mudança de contrato começa em schemas/ — este projeto acompanha, nunca lidera.
+       Puro (BCL apenas): edge e ingest referenciam sem arrastar infra. -->
+</Project>

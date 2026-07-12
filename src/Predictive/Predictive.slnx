@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Predictive.Domain/Predictive.Domain.csproj" />
+  <Project Path="Predictive.Worker/Predictive.Worker.csproj" />
+  <Project Path="Predictive.Tests/Predictive.Tests.csproj" />
+</Solution>

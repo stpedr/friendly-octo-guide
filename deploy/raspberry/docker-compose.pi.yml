@@ -27,6 +27,11 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      # Sem isso, os consumers (Predictive/Notifications/Decision.Engine/
+      # Telemetry.Ingest) sobem antes de qualquer producer criar os tópicos,
+      # tomam "Unknown topic or partition" e derrubam o host (StopHost) —
+      # crash loop até alguém publicar. Auto-create resolve no primeiro boot.
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       # JVM contida pra caber na Pi.
       KAFKA_HEAP_OPTS: "-Xmx384m -Xms256m"
 

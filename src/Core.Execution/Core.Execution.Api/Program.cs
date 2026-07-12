@@ -77,4 +77,7 @@ static object ToDto(WorkOrder order) => new
     state = order.State.ToString(),
 };
 
-public sealed record CreateOrderRequest(string Line, string Product, int Quantity);
+namespace Core.Execution.Api
+{
+    public sealed record CreateOrderRequest(string Line, string Product, int Quantity);
+}

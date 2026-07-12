@@ -96,5 +96,8 @@ static Subject SubjectFrom(ClaimsPrincipal user) => new(
     user.Claims.Where(c => c.Type.StartsWith("attr:", StringComparison.OrdinalIgnoreCase))
         .ToDictionary(c => c.Type[5..], c => c.Value, StringComparer.OrdinalIgnoreCase));
 
-public sealed record ChatRequest(string Message);
-public sealed record ToolCallRequest(bool HumanConfirmed);
+namespace Chatbot.Api
+{
+    public sealed record ChatRequest(string Message);
+    public sealed record ToolCallRequest(bool HumanConfirmed);
+}

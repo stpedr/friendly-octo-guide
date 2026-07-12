@@ -1,0 +1,13 @@
+{
+  "type": "record",
+  "name": "CommandProposal",
+  "namespace": "linha.comandos.propostos.v1",
+  "doc": "Comando de volta pra linha, proposto por Predictive/agentes. SÓ o Decision.Engine consome; nada escreve direto no PLC. Encoding JSON na fase 0.",
+  "fields": [
+    { "name": "command_id", "type": { "type": "string", "logicalType": "uuid" } },
+    { "name": "actuator_id", "type": "string" },
+    { "name": "target_value", "type": "double" },
+    { "name": "current_value", "type": "double" },
+    { "name": "criticality", "type": { "type": "enum", "name": "Criticality", "symbols": ["Low", "Medium", "High"] } }
+  ]
+}

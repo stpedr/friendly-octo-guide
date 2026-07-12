@@ -1,0 +1,75 @@
+/* Design system mínimo da fase 0 — um só arquivo, tokens no :root.
+   Os shells Tauri herdam exatamente isto: um design system, um core web. */
+:root {
+  --bg: #0f172a;
+  --card: #1e293b;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --accent: #38bdf8;
+  --danger: #f87171;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, sans-serif;
+}
+
+.card {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 2rem;
+  width: min(92vw, 420px);
+}
+
+#panel { width: min(96vw, 900px); }
+
+h1 { font-size: 1.25rem; margin: 0 0 1rem; }
+
+label { display: block; margin-bottom: 0.75rem; font-size: 0.9rem; color: var(--muted); }
+
+input {
+  display: block;
+  width: 100%;
+  margin-top: 0.25rem;
+  padding: 0.6rem;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 1rem;
+}
+
+button {
+  padding: 0.6rem 1.2rem;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #082f49;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+header { display: flex; align-items: center; gap: 1rem; }
+header h1 { flex: 1; }
+#logout { background: transparent; color: var(--muted); }
+
+.sensors {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.sensor { background: var(--bg); border-radius: 8px; padding: 1rem; }
+.sensor h2 { font-size: 0.85rem; color: var(--muted); margin: 0; }
+.sensor .value { font-size: 1.8rem; margin: 0.25rem 0 0; font-variant-numeric: tabular-nums; }
+
+.hint { color: var(--muted); font-size: 0.8rem; }
+.error { color: var(--danger); position: fixed; bottom: 1rem; }

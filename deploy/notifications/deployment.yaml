@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notifications
+  namespace: nucleo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: notifications }
+  template:
+    metadata:
+      labels: { app: notifications }
+    spec:
+      containers:
+        - name: notifications
+          image: harbor.interno/plataforma/notifications:latest
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.observabilidade:4317
+            - name: Kafka__Bootstrap
+              value: kafka.transporte:9092
+            - name: Ntfy__BaseUrl
+              value: http://ntfy.observabilidade
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 256Mi }
+---
+# Consumidor de fila escala por lag do tópico de alertas, não por CPU.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: notifications
+  namespace: nucleo
+spec:
+  scaleTargetRef:
+    name: notifications
+  minReplicaCount: 1
+  maxReplicaCount: 5
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: kafka.transporte:9092
+        consumerGroup: notifications
+        topic: linha.alertas.v1
+        lagThreshold: "500"

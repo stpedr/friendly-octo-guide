@@ -1,8 +1,59 @@
 <Solution>
   <Folder Name="/src/" />
+  <Folder Name="/src/Platform/">
+    <Project Path="src/Platform/Platform.ServiceDefaults/Platform.ServiceDefaults.csproj" />
+    <Project Path="src/Platform/Platform.AccessControl/Platform.AccessControl.csproj" />
+    <Project Path="src/Platform/Platform.Contracts/Platform.Contracts.csproj" />
+  </Folder>
+  <Folder Name="/src/Gateway/">
+    <Project Path="src/Gateway/Gateway.Domain/Gateway.Domain.csproj" />
+    <Project Path="src/Gateway/Gateway.Host/Gateway.Host.csproj" />
+    <Project Path="src/Gateway/Gateway.Tests/Gateway.Tests.csproj" />
+  </Folder>
+  <Folder Name="/src/Identity/">
+    <Project Path="src/Identity/Identity.Domain/Identity.Domain.csproj" />
+    <Project Path="src/Identity/Identity.Api/Identity.Api.csproj" />
+    <Project Path="src/Identity/Identity.Tests/Identity.Tests.csproj" />
+  </Folder>
+  <Folder Name="/src/Core.Execution/">
+    <Project Path="src/Core.Execution/Core.Execution.Domain/Core.Execution.Domain.csproj" />
+    <Project Path="src/Core.Execution/Core.Execution.Api/Core.Execution.Api.csproj" />
+    <Project Path="src/Core.Execution/Core.Execution.Tests/Core.Execution.Tests.csproj" />
+  </Folder>
+  <Folder Name="/src/Notifications/">
+    <Project Path="src/Notifications/Notifications.Domain/Notifications.Domain.csproj" />
+    <Project Path="src/Notifications/Notifications.Worker/Notifications.Worker.csproj" />
+    <Project Path="src/Notifications/Notifications.Tests/Notifications.Tests.csproj" />
+  </Folder>
+  <Folder Name="/src/Edge.ProtocolGateway/">
+    <Project Path="src/Edge.ProtocolGateway/Edge.ProtocolGateway.Domain/Edge.ProtocolGateway.Domain.csproj" />
+    <Project Path="src/Edge.ProtocolGateway/Edge.ProtocolGateway.Worker/Edge.ProtocolGateway.Worker.csproj" />
+    <Project Path="src/Edge.ProtocolGateway/Edge.ProtocolGateway.Tests/Edge.ProtocolGateway.Tests.csproj" />
+  </Folder>
   <Folder Name="/src/Telemetry.Ingest/">
     <Project Path="src/Telemetry.Ingest/Telemetry.Ingest.Domain/Telemetry.Ingest.Domain.csproj" />
     <Project Path="src/Telemetry.Ingest/Telemetry.Ingest.Tests/Telemetry.Ingest.Tests.csproj" />
     <Project Path="src/Telemetry.Ingest/Telemetry.Ingest.Worker/Telemetry.Ingest.Worker.csproj" />
+  </Folder>
+  <Folder Name="/src/Ai/">
+    <Project Path="src/Ai/Ai.Domain/Ai.Domain.csproj" />
+    <Project Path="src/Ai/Ai.Router.Worker/Ai.Router.Worker.csproj" />
+    <Project Path="src/Ai/Ai.Worker.Llm/Ai.Worker.Llm.csproj" />
+    <Project Path="src/Ai/Ai.Tests/Ai.Tests.csproj" />
+  </Folder>
+  <Folder Name="/src/Predictive/">
+    <Project Path="src/Predictive/Predictive.Domain/Predictive.Domain.csproj" />
+    <Project Path="src/Predictive/Predictive.Worker/Predictive.Worker.csproj" />
+    <Project Path="src/Predictive/Predictive.Tests/Predictive.Tests.csproj" />
+  </Folder>
+  <Folder Name="/src/Decision.Engine/">
+    <Project Path="src/Decision.Engine/Decision.Engine.Domain/Decision.Engine.Domain.csproj" />
+    <Project Path="src/Decision.Engine/Decision.Engine.Worker/Decision.Engine.Worker.csproj" />
+    <Project Path="src/Decision.Engine/Decision.Engine.Tests/Decision.Engine.Tests.csproj" />
+  </Folder>
+  <Folder Name="/src/Chatbot/">
+    <Project Path="src/Chatbot/Chatbot.Domain/Chatbot.Domain.csproj" />
+    <Project Path="src/Chatbot/Chatbot.Api/Chatbot.Api.csproj" />
+    <Project Path="src/Chatbot/Chatbot.Tests/Chatbot.Tests.csproj" />
   </Folder>
 </Solution>

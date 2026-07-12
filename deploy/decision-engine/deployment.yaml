@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: decision-engine
+  namespace: linha
+spec:
+  replicas: 1   # decisões em série por atuador; escalar exige particionar por atuador
+  selector:
+    matchLabels: { app: decision-engine }
+  template:
+    metadata:
+      labels: { app: decision-engine }
+    spec:
+      containers:
+        - name: decision-engine
+          image: harbor.interno/plataforma/decision-engine:latest
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.observabilidade:4317
+            - name: Kafka__Bootstrap
+              value: kafka.transporte:9092
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 256Mi }

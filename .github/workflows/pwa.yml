@@ -1,0 +1,21 @@
+name: pwa
+
+on:
+  pull_request:
+    paths: ['clients/pwa/**']
+  push:
+    branches: [main]
+    paths: ['clients/pwa/**']
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Sem build step por decisão (fase 0): o gate é sintaxe válida + manifest íntegro.
+      - name: Sintaxe dos módulos
+        run: |
+          node --check clients/pwa/app.js
+          node --check clients/pwa/sw.js
+      - name: Manifest é JSON válido
+        run: node -e "JSON.parse(require('fs').readFileSync('clients/pwa/manifest.webmanifest','utf8'))"

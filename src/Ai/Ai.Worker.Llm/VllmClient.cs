@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -27,8 +28,9 @@ public sealed class VllmClient(HttpClient http, IConfiguration config)
 
         var completion = await response.Content.ReadFromJsonAsync<ChatCompletion>(JsonOpts, ct)
             ?? throw new InvalidOperationException("vLLM devolveu corpo vazio.");
-        return completion.Choices.FirstOrDefault()?.Message?.Content
-            ?? throw new InvalidOperationException("vLLM devolveu resposta sem choices.");
+        return completion.Choices is [var first, ..]
+            ? first.Message?.Content ?? throw new InvalidOperationException("vLLM devolveu choice sem conteúdo.")
+            : throw new InvalidOperationException("vLLM devolveu resposta sem choices.");
     }
 
     private sealed record ChatCompletion([property: JsonPropertyName("choices")] IReadOnlyList<Choice> Choices);

@@ -1,0 +1,12 @@
+{
+  "type": "record",
+  "name": "AiJob",
+  "namespace": "ai.jobs.v1",
+  "doc": "Envelope de job do subsistema de IA. Encoding JSON na fase 0; Avro binário quando o Schema Registry entrar. Compatibilidade BACKWARD obrigatória.",
+  "fields": [
+    { "name": "job_id", "type": { "type": "string", "logicalType": "uuid" } },
+    { "name": "model_type", "type": "string", "doc": "llm | vision | embedding — decide o tópico do worker" },
+    { "name": "payload", "type": "string", "doc": "prompt ou referência de objeto no MinIO" },
+    { "name": "attempts", "type": "int", "default": 0, "doc": "contado pelo worker; DLQ ao esgotar" }
+  ]
+}

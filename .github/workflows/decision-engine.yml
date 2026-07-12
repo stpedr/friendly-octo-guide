@@ -1,0 +1,16 @@
+name: decision-engine
+
+on:
+  pull_request:
+    paths: ['src/Decision.Engine/**', 'src/Platform/**', 'schemas/**']
+  push:
+    branches: [main]
+    paths: ['src/Decision.Engine/**', 'src/Platform/**', 'schemas/**']
+
+jobs:
+  ci:
+    uses: ./.github/workflows/_dotnet-service.yml
+    with:
+      service-path: src/Decision.Engine
+      service-name: decision-engine
+      coverage-threshold: 80

@@ -1,0 +1,16 @@
+name: gateway
+
+on:
+  pull_request:
+    paths: ['src/Gateway/**', 'src/Platform/**', 'schemas/**']
+  push:
+    branches: [main]
+    paths: ['src/Gateway/**', 'src/Platform/**', 'schemas/**']
+
+jobs:
+  ci:
+    uses: ./.github/workflows/_dotnet-service.yml
+    with:
+      service-path: src/Gateway
+      service-name: gateway
+      coverage-threshold: 80

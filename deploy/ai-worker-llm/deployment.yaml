@@ -1,0 +1,53 @@
+# Um Deployment por MODELO (este é o do LLM de texto/RAG) no GPU node pool.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-worker-llm
+  namespace: ia
+spec:
+  replicas: 0   # o KEDA sobe do zero quando a fila enche
+  selector:
+    matchLabels: { app: ai-worker-llm }
+  template:
+    metadata:
+      labels: { app: ai-worker-llm }
+    spec:
+      nodeSelector:
+        pool: gpu
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+      containers:
+        - name: ai-worker-llm
+          image: harbor.interno/plataforma/ai-worker-llm:latest
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.observabilidade:4317
+            - name: Kafka__Bootstrap
+              value: kafka.transporte:9092
+            - name: Vllm__BaseUrl
+              value: http://vllm-llama.ia:8000
+          resources:
+            requests: { cpu: 250m, memory: 512Mi }
+            limits: { memory: 1Gi }
+---
+# Scale-to-zero: fila vazia = zero pods = zero GPU ociosa = custo mínimo.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: ai-worker-llm
+  namespace: ia
+spec:
+  scaleTargetRef:
+    name: ai-worker-llm
+  minReplicaCount: 0
+  maxReplicaCount: 8
+  cooldownPeriod: 120
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: kafka.transporte:9092
+        consumerGroup: ai-worker-llm
+        topic: ai.jobs.llm.v1
+        lagThreshold: "10"
+        activationLagThreshold: "1"

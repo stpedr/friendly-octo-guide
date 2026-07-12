@@ -36,8 +36,9 @@ public sealed class VllmChat(HttpClient http, IConfiguration config)
         response.EnsureSuccessStatusCode();
 
         var completion = await response.Content.ReadFromJsonAsync<ChatCompletion>(JsonOpts, ct);
-        return completion?.Choices.FirstOrDefault()?.Message?.Content
-            ?? "Não consegui gerar resposta agora — tente novamente.";
+        return completion is { Choices: [var first, ..] }
+            ? first.Message?.Content ?? "Não consegui gerar resposta agora — tente novamente."
+            : "Não consegui gerar resposta agora — tente novamente.";
     }
 
     private sealed record ChatCompletion([property: JsonPropertyName("choices")] IReadOnlyList<Choice> Choices);

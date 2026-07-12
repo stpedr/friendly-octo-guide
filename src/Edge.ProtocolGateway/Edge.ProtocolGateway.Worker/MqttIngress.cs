@@ -55,6 +55,7 @@ public sealed partial class MqttIngress(
         };
 
         // Reconexão com retry — broker local pode reiniciar; o gateway não morre junto.
+        var endpoint = $"{config["Mqtt:Host"] ?? "localhost"}:{config.GetValue("Mqtt:Port", 1883)}";
         while (!stoppingToken.IsCancellationRequested)
         {
             try
@@ -67,7 +68,7 @@ public sealed partial class MqttIngress(
                             .WithTopicFilter("linha/+/sensor/+")
                             .Build(),
                         stoppingToken);
-                    LogConnected(options.ChannelOptions.ToString() ?? "mqtt");
+                    LogConnected(endpoint);
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)

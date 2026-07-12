@@ -1,0 +1,15 @@
+{
+  "type": "record",
+  "name": "AuditedDecision",
+  "namespace": "auditoria.decisoes.v1",
+  "doc": "TODA decisão do loop fechado, em qualquer desfecho, com trace-id — retenção longa no Big Data Pool (WORM). Encoding JSON na fase 0.",
+  "fields": [
+    { "name": "command_id", "type": { "type": "string", "logicalType": "uuid" } },
+    { "name": "actuator_id", "type": "string" },
+    { "name": "target_value", "type": "double" },
+    { "name": "outcome", "type": "string", "doc": "AutoApproved | NeedsHumanApproval | Rejected" },
+    { "name": "rationale", "type": "string" },
+    { "name": "trace_id", "type": ["null", "string"], "default": null },
+    { "name": "decided_at", "type": { "type": "long", "logicalType": "timestamp-millis" } }
+  ]
+}

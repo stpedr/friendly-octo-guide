@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chatbot
+  namespace: ia
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: chatbot }
+  template:
+    metadata:
+      labels: { app: chatbot }
+    spec:
+      containers:
+        - name: chatbot
+          image: harbor.interno/plataforma/chatbot:latest
+          ports: [{ containerPort: 8080 }]
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.observabilidade:4317
+            - name: Vllm__BaseUrl
+              value: http://vllm-llama.ia:8000
+            # Jwt__SigningKey: OpenBao via External Secrets.
+          readinessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chatbot
+  namespace: ia
+spec:
+  selector: { app: chatbot }
+  ports: [{ port: 8080, targetPort: 8080 }]

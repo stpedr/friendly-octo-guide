@@ -1,0 +1,30 @@
+# Roda no cluster de BORDA (k3s na DMZ industrial, nível 3.5 do Purdue),
+# não no cluster central — está aqui pelo GitOps, com destino distinto.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: edge-protocol-gateway
+  namespace: linha
+spec:
+  replicas: 1   # 1 por planta/linha física; identidade mTLS própria por instância
+  selector:
+    matchLabels: { app: edge-protocol-gateway }
+  template:
+    metadata:
+      labels: { app: edge-protocol-gateway }
+    spec:
+      containers:
+        - name: edge-protocol-gateway
+          image: harbor.interno/plataforma/edge-protocol-gateway:latest
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.observabilidade:4317
+            - name: Mqtt__Host
+              value: mosquitto.linha
+            - name: Kafka__Bootstrap
+              value: kafka.transporte:9092
+            - name: Edge__BufferCapacity
+              value: "100000"
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { memory: 512Mi }   # buffer store-and-forward vive aqui

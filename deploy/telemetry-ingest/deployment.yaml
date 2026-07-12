@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telemetry-ingest
+  namespace: linha
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: telemetry-ingest }
+  template:
+    metadata:
+      labels: { app: telemetry-ingest }
+    spec:
+      containers:
+        - name: telemetry-ingest
+          image: harbor.interno/plataforma/telemetry-ingest:latest
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.observabilidade:4317
+            - name: Kafka__Bootstrap
+              value: kafka.transporte:9092
+            # ConnectionStrings__Postgres: OpenBao via External Secrets.
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { memory: 256Mi }
+---
+# Backpressure vira escala: buffer da borda enche → lag cresce → KEDA adiciona
+# consumidor — nunca descarta.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: telemetry-ingest
+  namespace: linha
+spec:
+  scaleTargetRef:
+    name: telemetry-ingest
+  minReplicaCount: 1
+  maxReplicaCount: 12   # teto = nº de partições de linha.telemetria.v1
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: kafka.transporte:9092
+        consumerGroup: telemetry-ingest
+        topic: linha.telemetria.v1
+        lagThreshold: "1000"

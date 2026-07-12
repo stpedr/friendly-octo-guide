@@ -1,4 +1,6 @@
 # Dev local + PoC (fase 0). Kubernetes só entra na fase 1.
+# Sobe: transporte (Kafka), stores (Postgres/Valkey/MinIO/VictoriaMetrics),
+# borda (Mosquitto) e a espinha de observabilidade completa (OTel → Loki/Tempo/VM → Grafana).
 services:
   kafka:
     image: apache/kafka:3.9.0          # KRaft, sem ZooKeeper
@@ -21,6 +23,12 @@ services:
       POSTGRES_PASSWORD: dev
     volumes: [pgdata:/var/lib/postgresql/data]
 
+  # Cache de sessão, resultados quentes e rate limiting distribuído.
+  # Valkey (Linux Foundation): protocolo Redis, licença aberta.
+  valkey:
+    image: valkey/valkey:8
+    ports: ["6379:6379"]
+
   minio:
     image: minio/minio:latest
     command: server /data --console-address ":9001"
@@ -30,6 +38,60 @@ services:
       MINIO_ROOT_PASSWORD: devdevdev
     volumes: [miniodata:/data]
 
+  # Broker MQTT da borda (na fábrica real, roda na DMZ industrial — nível 3.5 do Purdue).
+  mosquitto:
+    image: eclipse-mosquitto:2
+    ports: ["1883:1883"]
+    volumes:
+      - ./deploy/observability/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+
+  # ── Espinha de observabilidade ──────────────────────────────────
+  # Todo serviço exporta OTLP pra cá; o collector roteia logs → Loki,
+  # traces → Tempo, métricas → VictoriaMetrics. Nada sai desse funil.
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.116.0
+    command: ["--config=/etc/otel/config.yaml"]
+    ports: ["4317:4317", "4318:4318"]
+    volumes:
+      - ./deploy/observability/otel-collector.yaml:/etc/otel/config.yaml:ro
+    depends_on: [loki, tempo, victoriametrics]
+
+  loki:
+    image: grafana/loki:3.3.2
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    ports: ["3100:3100"]
+
+  tempo:
+    image: grafana/tempo:2.7.0
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    ports: ["3200:3200"]
+    volumes:
+      - ./deploy/observability/tempo.yaml:/etc/tempo/tempo.yaml:ro
+
+  # TSDB da linha E das métricas Prometheus — um banco a menos pra operar.
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:v1.109.1
+    command: ["--storageDataPath=/storage", "--httpListenAddr=:8428"]
+    ports: ["8428:8428"]
+    volumes: [vmdata:/storage]
+
+  grafana:
+    image: grafana/grafana-oss:11.5.1
+    ports: ["3000:3000"]
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"    # dev apenas; prod usa OIDC do Keycloak
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+    volumes:
+      - ./deploy/observability/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
+    depends_on: [loki, tempo, victoriametrics]
+
+  # Push OSS self-hosted — alertas chegam no celular sem serviço pago.
+  ntfy:
+    image: binwiederhier/ntfy:v2.11.0
+    command: ["serve"]
+    ports: ["8090:80"]
+
 volumes:
   pgdata:
   miniodata:
+  vmdata:

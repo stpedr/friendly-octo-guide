@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Telemetry.Ingest/">
+    <Project Path="src/Telemetry.Ingest/Telemetry.Ingest.Domain/Telemetry.Ingest.Domain.csproj" />
+    <Project Path="src/Telemetry.Ingest/Telemetry.Ingest.Tests/Telemetry.Ingest.Tests.csproj" />
+    <Project Path="src/Telemetry.Ingest/Telemetry.Ingest.Worker/Telemetry.Ingest.Worker.csproj" />
+  </Folder>
+</Solution>

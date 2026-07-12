@@ -1,0 +1,12 @@
+{
+  "type": "record",
+  "name": "SensorReading",
+  "namespace": "linha.telemetria.v1",
+  "doc": "Leitura de sensor da linha. Compatibilidade BACKWARD obrigatória — campo novo sempre com default.",
+  "fields": [
+    { "name": "sensor_id", "type": "string" },
+    { "name": "value", "type": "double" },
+    { "name": "measured_at", "type": { "type": "long", "logicalType": "timestamp-millis" } },
+    { "name": "quality_flag", "type": "int", "default": 0, "doc": "0=normal; reservado p/ flags do PLC" }
+  ]
+}

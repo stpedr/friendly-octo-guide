@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Telemetry.Ingest.Domain/Telemetry.Ingest.Domain.csproj" />
+  <Project Path="Telemetry.Ingest.Tests/Telemetry.Ingest.Tests.csproj" />
+  <Project Path="Telemetry.Ingest.Worker/Telemetry.Ingest.Worker.csproj" />
+</Solution>

@@ -1,0 +1,16 @@
+name: telemetry-ingest
+
+on:
+  pull_request:
+    paths: ['src/Telemetry.Ingest/**', 'schemas/**']
+  push:
+    branches: [main]
+    paths: ['src/Telemetry.Ingest/**', 'schemas/**']
+
+jobs:
+  ci:
+    uses: ./.github/workflows/_dotnet-service.yml
+    with:
+      service-path: src/Telemetry.Ingest
+      service-name: telemetry-ingest
+      coverage-threshold: 80

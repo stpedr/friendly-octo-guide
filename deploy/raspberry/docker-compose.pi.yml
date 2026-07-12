@@ -50,7 +50,7 @@ services:
 
   # ── Espinha de observabilidade (essencial) ──────────────────────
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.116.0
+    image: otel/opentelemetry-collector-contrib:0.120.0   # 0.116.0 tem build ARM64 quebrado (binário dinâmico sem ld-linux-aarch64.so.1)
     restart: unless-stopped
     mem_limit: 192m
     command: ["--config=/etc/otel/config.yaml"]

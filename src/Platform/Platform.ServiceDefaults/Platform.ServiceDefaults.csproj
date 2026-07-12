@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Contrato único de instrumentação: todo host do monorepo chama AddPlatformDefaults()
+       e nasce emitindo logs estruturados, traces e métricas pro OTel Collector.
+       Serviço que não referencia este projeto não passa no review. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.16.0" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.16.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.16.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.12.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.12.0" />
+  </ItemGroup>
+</Project>

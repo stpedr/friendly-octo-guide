@@ -69,7 +69,7 @@ services:
     image: grafana/grafana-oss:11.5.1
     restart: unless-stopped
     mem_limit: 256m
-    ports: ["3000:3000"]
+    ports: ["3030:3000"]   # 3000 já usado por outro serviço na Pi (casa-homepage)
     environment:
       GF_AUTH_ANONYMOUS_ENABLED: "true"   # rede doméstica; troque por senha se expor além dela
       GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
@@ -105,7 +105,7 @@ services:
     build: { context: ../.., dockerfile: src/Gateway/Dockerfile }
     restart: unless-stopped
     mem_limit: 192m
-    ports: ["8080:8080"]   # a borda é o único serviço .NET exposto na rede
+    ports: ["8180:8080"]   # 8080 já usado por outro serviço na Pi (casa-qbittorrent)
     environment: &otel
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     depends_on: [identity, core-execution]

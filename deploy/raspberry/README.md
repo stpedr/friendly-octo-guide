@@ -30,8 +30,8 @@ disso, atualizações são incrementais.
 
 | Serviço | Endereço |
 |---|---|
-| Gateway (API da plataforma) | `http://<ip-da-pi>:8080` |
-| Grafana (espinha de observabilidade) | `http://<ip-da-pi>:3000` |
+| Gateway (API da plataforma) | `http://<ip-da-pi>:8180` |
+| Grafana (espinha de observabilidade) | `http://<ip-da-pi>:3030` |
 | ntfy (push de alerta) | `http://<ip-da-pi>:8090` — instale o app ntfy e assine `oncall-primario` |
 | MQTT (sensores reais) | `<ip-da-pi>:1883` — tópico `linha/<linha>/sensor/<id>` |
 
@@ -58,7 +58,7 @@ docker compose -f deploy/raspberry/docker-compose.pi.yml down     # parar tudo (
 
 ## Segurança na rede doméstica
 
-- O compose expõe só o necessário (8080/3000/8090/1883). Nada disso deve ser
+- O compose expõe só o necessário (8180/3030/8090/1883). Nada disso deve ser
   visível da internet — se quiser acesso externo, use VPN (WireGuard/Tailscale),
   não port-forward.
 - Grafana está anônimo por conveniência de rede local; ative senha se a rede

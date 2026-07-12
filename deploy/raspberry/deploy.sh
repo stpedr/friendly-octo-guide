@@ -46,8 +46,8 @@ docker compose -f deploy/raspberry/docker-compose.pi.yml "${PROFILES[@]}" up -d 
 IP="$(hostname -I | awk '{print $1}')"
 echo
 echo "── Pronto ───────────────────────────────────────────────────"
-echo "Gateway (API):    http://$IP:8080/healthz"
-echo "Grafana:          http://$IP:3000"
+echo "Gateway (API):    http://$IP:8180/healthz"
+echo "Grafana:          http://$IP:3030"
 echo "ntfy (push):      http://$IP:8090  → assine o tópico 'oncall-primario' no app"
 echo "MQTT (sensores):  $IP:1883        → tópico linha/<linha>/sensor/<id>"
 echo

@@ -16,6 +16,8 @@ name: plataforma-linha-pi
 # deploy/raspberry/openbao/bootstrap.sh) pra Identity/Gateway conseguirem ler
 # secret/platform/* sem um passo extra de descoberta de credencial no boot.
 x-openbao-app-token: &openbao_app_token "plataforma-linha-app-token-a83f1c2e9b74"
+x-otel-env: &otel
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
 
 services:
   # ── Transporte + stores ─────────────────────────────────────────

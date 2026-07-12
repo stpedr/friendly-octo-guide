@@ -12,6 +12,11 @@
 
 name: plataforma-linha-pi
 
+# Token de aplicação do OpenBao com ID fixo — simplificação de home-lab (ver
+# deploy/raspberry/openbao/bootstrap.sh) pra Identity/Gateway conseguirem ler
+# secret/platform/* sem um passo extra de descoberta de credencial no boot.
+x-openbao-app-token: &openbao_app_token "plataforma-linha-app-token-a83f1c2e9b74"
+
 services:
   # ── Transporte + stores ─────────────────────────────────────────
   kafka:
@@ -52,6 +57,52 @@ services:
     ports: ["1883:1883"]   # exposto na rede: sensores/PLCs reais da casa publicam aqui
     volumes:
       - ../observability/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+
+  # ── Identidade e segredos ────────────────────────────────────────
+  openbao:
+    image: openbao/openbao:2.4
+    restart: unless-stopped
+    mem_limit: 128m
+    cap_add: [IPC_LOCK]
+    command: ["server", "-config=/openbao/config/config.hcl"]
+    volumes:
+      - ./openbao/config.hcl:/openbao/config/config.hcl:ro
+      - openbao-data:/openbao/data
+
+  # One-shot (roda em todo `up`, ver bootstrap.sh): inicializa/reabre o OpenBao,
+  # grava os segredos da plataforma e renderiza o realm do Keycloak antes dele subir.
+  platform-secrets-init:
+    image: openbao/openbao:2.4
+    restart: "no"
+    entrypoint: ["/bin/sh", "/bootstrap/bootstrap.sh"]
+    environment:
+      OPENBAO_APP_TOKEN: *openbao_app_token
+    volumes:
+      - ./openbao/bootstrap.sh:/bootstrap/bootstrap.sh:ro
+      - ./keycloak/realm-export.json.template:/template/realm-export.json.template:ro
+      - openbao-state:/state
+      - keycloak-import:/kc-import
+    depends_on: [openbao]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4
+    restart: unless-stopped
+    mem_limit: 384m
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin-troque-no-primeiro-login   # console admin só na LAN; troque ao logar
+      KC_HOSTNAME: keycloak
+      KC_HOSTNAME_PORT: "8080"
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      JAVA_OPTS_APPEND: "-Xms96m -Xmx320m"
+    volumes:
+      - keycloak-data:/opt/keycloak/data
+      - keycloak-import:/opt/keycloak/data/import:ro
+    depends_on:
+      platform-secrets-init:
+        condition: service_completed_successfully
 
   # ── Espinha de observabilidade (essencial) ──────────────────────
   otel-collector:
@@ -111,15 +162,30 @@ services:
     restart: unless-stopped
     mem_limit: 192m
     ports: ["8180:8080"]   # 8080 já usado por outro serviço na Pi (casa-qbittorrent)
-    environment: &otel
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
-    depends_on: [identity, core-execution]
+    environment:
+      <<: *otel
+      OpenBao__Addr: http://openbao:8200
+      OpenBao__Token: *openbao_app_token
+      Keycloak__BaseUrl: http://keycloak:8080
+      Keycloak__Realm: plataforma-linha
+    depends_on:
+      identity: { condition: service_started }
+      core-execution: { condition: service_started }
+      platform-secrets-init: { condition: service_completed_successfully }
 
   identity:
     build: { context: ../.., dockerfile: src/Identity/Dockerfile }
     restart: unless-stopped
     mem_limit: 160m
-    environment: *otel
+    environment:
+      <<: *otel
+      OpenBao__Addr: http://openbao:8200
+      OpenBao__Token: *openbao_app_token
+      Keycloak__BaseUrl: http://keycloak:8080
+      Keycloak__Realm: plataforma-linha
+    depends_on:
+      platform-secrets-init: { condition: service_completed_successfully }
+      keycloak: { condition: service_started }
 
   core-execution:
     build: { context: ../.., dockerfile: src/Core.Execution/Dockerfile }
@@ -231,3 +297,7 @@ services:
 volumes:
   pgdata:
   vmdata:
+  openbao-data:
+  openbao-state:
+  keycloak-data:
+  keycloak-import:

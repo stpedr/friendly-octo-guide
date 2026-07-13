@@ -14,14 +14,57 @@ services:
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
+  # pgvector/pgvector = imagem oficial do Postgres + extensão vector (Knowledge usa).
+  # WAL archiving ligado: junto com o pg-backup (perfil ha) dá PITR — ver docs/governanca.
   postgres:
-    image: postgres:17
+    image: pgvector/pgvector:pg17
     ports: ["5432:5432"]
+    command:
+      - postgres
+      - -c
+      - wal_level=replica
+      - -c
+      - archive_mode=on
+      - -c
+      - archive_command=test ! -f /wal-archive/%f && cp %p /wal-archive/%f
     environment:
       POSTGRES_DB: linha
       POSTGRES_USER: dev
       POSTGRES_PASSWORD: dev
-    volumes: [pgdata:/var/lib/postgresql/data]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - wal-archive:/wal-archive
+      - ./deploy/infra/postgres-init.sql:/docker-entrypoint-initdb.d/10-init.sql:ro
+
+  # Réplica de leitura por streaming (perfil ha): relatório/analytics saem do primário.
+  postgres-replica:
+    image: pgvector/pgvector:pg17
+    entrypoint: ["/bin/bash", "/replica-entrypoint.sh"]
+    ports: ["5433:5432"]
+    environment:
+      PRIMARY_HOST: postgres
+      PGPASSWORD: replicator-dev
+      # Exigido pela imagem, mas ignorado após o basebackup clonar o primário.
+      POSTGRES_PASSWORD: unused
+    volumes:
+      - pgreplica:/var/lib/postgresql/data
+      - ./deploy/infra/postgres-replica-entrypoint.sh:/replica-entrypoint.sh:ro
+    depends_on: [postgres]
+    profiles: [ha]
+
+  # Dump lógico diário com retenção — a metade "base" do PITR.
+  pg-backup:
+    image: pgvector/pgvector:pg17
+    entrypoint: ["/bin/bash", "/pg-backup.sh"]
+    environment:
+      PGHOST: postgres
+      PGUSER: dev
+      PGPASSWORD: dev
+    volumes:
+      - pgbackups:/backups
+      - ./deploy/infra/pg-backup.sh:/pg-backup.sh:ro
+    depends_on: [postgres]
+    profiles: [ha]
 
   # Cache de sessão, resultados quentes e rate limiting distribuído.
   # Valkey (Linux Foundation): protocolo Redis, licença aberta.
@@ -37,6 +80,64 @@ services:
       MINIO_ROOT_USER: dev
       MINIO_ROOT_PASSWORD: devdevdev
     volumes: [miniodata:/data]
+
+  # Contrato de evento com dono: os .avsc de schemas/ são registrados aqui e
+  # versionados pelo registry (compatibilidade BACKWARD por padrão no grupo).
+  schema-registry:
+    image: apicurio/apicurio-registry:3.0.13
+    ports: ["8085:8080"]
+
+  # One-shot: publica os schemas do repo no registry a cada `up` (idempotente).
+  schema-init:
+    image: curlimages/curl:8.17.0
+    entrypoint: ["/bin/sh", "/init/register-schemas.sh"]
+    volumes:
+      - ./schemas:/schemas:ro
+      - ./deploy/infra/register-schemas.sh:/init/register-schemas.sh:ro
+    depends_on: [schema-registry]
+    restart: "no"
+
+  # ── Borda com WAF (perfil waf): NGINX + ModSecurity + OWASP CRS na frente do Gateway ──
+  ingress-waf:
+    image: owasp/modsecurity-crs:nginx-alpine
+    ports: ["8443:8080"]
+    environment:
+      BACKEND: ${WAF_BACKEND:-http://host.docker.internal:5180}   # gateway em dev; no cluster, o Service dele
+      MODSEC_RULE_ENGINE: "On"                     # bloqueia, não só detecta
+      BLOCKING_PARANOIA: "1"                       # CRS nível 1: baixo falso-positivo
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    profiles: [waf]
+
+  # ── Plataforma de engenharia (perfil plataforma-eng) ─────────────
+  # Feature flags com quem liga/desliga auditado.
+  unleash:
+    image: unleashorg/unleash-server:6
+    ports: ["4242:4242"]
+    environment:
+      DATABASE_URL: postgres://dev:dev@postgres/unleash
+      DATABASE_SSL: "false"
+    depends_on: [postgres]
+    profiles: [plataforma-eng]
+
+  # Registro de modelos/experimentos do subsistema preditivo.
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v3.4.0
+    command:
+      - mlflow
+      - server
+      - --host=0.0.0.0
+      - --backend-store-uri=sqlite:///mlflow/mlflow.db
+      - --artifacts-destination=/mlflow/artifacts
+    ports: ["5500:5000"]
+    volumes: [mlflowdata:/mlflow]
+    profiles: [plataforma-eng]
+
+  # Status page + checagem sintética de fora pra dentro.
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    ports: ["3001:3001"]
+    volumes: [kumadata:/app/data]
+    profiles: [plataforma-eng]
 
   # Broker MQTT da borda (na fábrica real, roda na DMZ industrial — nível 3.5 do Purdue).
   mosquitto:
@@ -93,5 +194,10 @@ services:
 
 volumes:
   pgdata:
+  pgreplica:
+  pgbackups:
+  wal-archive:
   miniodata:
   vmdata:
+  mlflowdata:
+  kumadata:

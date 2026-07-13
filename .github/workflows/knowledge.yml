@@ -1,0 +1,16 @@
+name: knowledge
+
+on:
+  pull_request:
+    paths: ['src/Knowledge/**', 'src/Platform/**']
+  push:
+    branches: [main]
+    paths: ['src/Knowledge/**', 'src/Platform/**']
+
+jobs:
+  ci:
+    uses: ./.github/workflows/_dotnet-service.yml
+    with:
+      service-path: src/Knowledge
+      service-name: knowledge
+      coverage-threshold: 80

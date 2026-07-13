@@ -1,0 +1,10 @@
+{{- range $name, $dominio := .Values.namespaces }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $name }}
+  labels:
+    dominio: {{ $dominio }}
+    app.kubernetes.io/part-of: plataforma-linha
+{{- end }}

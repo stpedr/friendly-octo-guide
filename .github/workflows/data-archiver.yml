@@ -1,0 +1,16 @@
+name: data-archiver
+
+on:
+  pull_request:
+    paths: ['src/Data.Archiver/**', 'src/Platform/**', 'schemas/**']
+  push:
+    branches: [main]
+    paths: ['src/Data.Archiver/**', 'src/Platform/**', 'schemas/**']
+
+jobs:
+  ci:
+    uses: ./.github/workflows/_dotnet-service.yml
+    with:
+      service-path: src/Data.Archiver
+      service-name: data-archiver
+      coverage-threshold: 80

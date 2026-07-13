@@ -57,15 +57,40 @@ reenfileira com tentativa contada até a DLQ.
   (e grita) em vez de descartar na borda, outbox com backoff — cada caminho de
   falha tem destino e métrica.
 
-## O que fica pra fase 1 (e onde encaixa)
+## Fase 1: o que já entrou
 
-- **Keycloak** assume OIDC; o Identity vira fachada/emissor interno ou é absorvido.
-- **OpenBao + External Secrets**: chaves JWT e seeds TOTP saem da config.
-- **mTLS/service mesh (Linkerd)**, WAF (Coraza) na frente do Gateway.
-- **Valkey** assume rate limit distribuído, idempotência entre réplicas e cache de sessão.
-- **pgvector + embeddings workers** substituem a relevância lexical do RAG.
+- **Keycloak + OpenBao**: Identity delega login quando configurado; Gateway
+  valida via JWKS do realm; segredos (chave JWT, client secret) saem do OpenBao.
+- **Valkey** assume o rate limit distribuído do Gateway (token bucket em Lua
+  atômico, fail-open pro limitador local — `ValkeyRateLimiter`).
+- **pgvector**: serviço `src/Knowledge/` (GraphQL via HotChocolate, JSONB +
+  índice HNSW, visibilidade RBAC filtrada na query); embeddings via endpoint
+  OpenAI-compatível ou embedder local de dev.
+- **MCP**: as ferramentas do Chatbot são um MCP server real (`/v1/chat/mcp`),
+  mesmos guardrails do REST.
+- **Data lake**: `src/Data.Archiver/` arquiva o tópico de telemetria no
+  MinIO/S3 (JSONL.gz, partição Hive-style, replay idempotente).
+- **WAF (ModSecurity + OWASP CRS)** na frente do Gateway — perfil `waf` dos composes.
+- **Postgres HA caseiro**: WAL archiving + dump diário + réplica streaming
+  (perfil `ha`) — RPO/RTO formalizados em `docs/governanca/`.
+- **Schema Registry (Apicurio)** versionando os `.avsc` (o codec fixo continua
+  sendo o contrato executável).
+- **Helm + ArgoCD**: `deploy/helm/plataforma-linha` (chart único, 13 serviços)
+  aplicado por `deploy/argocd/` (sync automático com prune/selfHeal).
+- **Supply chain no CI**: Trivy bloqueia CRITICAL, imagem vai pro GHCR e é
+  assinada com cosign keyless (OIDC do job).
+- **Plataforma de engenharia** (perfil `plataforma-eng`): Unleash (feature
+  flags), MLflow (registro de modelos), Uptime Kuma (status page).
+- **Multi-tenant decidido**: single-tenant por instância, multi-planta por
+  atributo ABAC — ADR em `docs/governanca/multi-tenant.md`.
+
+## O que fica pra fase 2 (e onde encaixa)
+
+- **mTLS/service mesh (Linkerd)** entre serviços no cluster.
 - **Flink/ksqlDB** quando o scoring precisar de janela/join além do por-sensor.
-- **MirrorMaker 2 + região standby** (DR), **Velero**, **Harbor/cosign** (o CI já
-  tem o degrau de scan Trivy), **ArgoCD** aplicando `deploy/`.
-- **Multi-tenant continua em aberto** — como na proposta: decide antes de
-  detalhar backup/DR de verdade.
+- **MirrorMaker 2 + região standby** (DR), **Velero**, **Harbor** substituindo
+  o GHCR quando houver registry próprio.
+- **Feast** (feature store) quando houver mais de um modelo consumindo as
+  mesmas features; MLflow já registra experimentos.
+- **Suíte de eval de IA automatizada** como gate de CI (hoje: manual,
+  `docs/governanca/avaliacao-ia.md`).

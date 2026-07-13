@@ -1,0 +1,95 @@
+{{- /*
+Um template, todos os serviços: cada entrada de .Values.services vira
+Deployment (+ Service e readiness probe quando expõe porta, + HPA quando
+declara hpa, + ScaledObject KEDA quando declara kafkaScaler). Divergência
+de forma entre serviços é decisão de values, não template novo.
+*/ -}}
+{{- range $name, $svc := .Values.services }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  namespace: {{ $svc.namespace }}
+  labels:
+    app: {{ $name }}
+    app.kubernetes.io/part-of: plataforma-linha
+spec:
+  replicas: {{ $svc.replicas }}
+  selector:
+    matchLabels: { app: {{ $name }} }
+  template:
+    metadata:
+      labels: { app: {{ $name }} }
+    spec:
+      containers:
+        - name: {{ $name }}
+          image: "{{ $.Values.image.registry }}/{{ $name }}:{{ $.Values.image.tag }}"
+          {{- if $svc.port }}
+          ports: [{ containerPort: {{ $svc.port }} }]
+          readinessProbe:
+            httpGet: { path: /healthz, port: {{ $svc.port }} }
+          {{- end }}
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ $.Values.otelEndpoint | quote }}
+            {{- range $key, $value := $svc.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml $svc.resources | nindent 12 }}
+{{- if $svc.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  namespace: {{ $svc.namespace }}
+  labels:
+    app.kubernetes.io/part-of: plataforma-linha
+spec:
+  selector: { app: {{ $name }} }
+  ports: [{ port: {{ $svc.port }}, targetPort: {{ $svc.port }} }]
+{{- end }}
+{{- with $svc.hpa }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $name }}
+  namespace: {{ $svc.namespace }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ $name }}
+  minReplicas: {{ .min }}
+  maxReplicas: {{ .max }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: {{ .cpuUtilization }} }
+{{- end }}
+{{- with $svc.kafkaScaler }}
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ $name }}
+  namespace: {{ $svc.namespace }}
+spec:
+  scaleTargetRef:
+    name: {{ $name }}
+  minReplicaCount: {{ .minReplicas }}
+  maxReplicaCount: {{ .maxReplicas }}
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: {{ index $svc.env "Kafka__Bootstrap" | default "kafka.transporte:9092" }}
+        consumerGroup: {{ .consumerGroup }}
+        topic: {{ .topic }}
+        lagThreshold: {{ .lagThreshold | quote }}
+{{- end }}
+{{- end }}

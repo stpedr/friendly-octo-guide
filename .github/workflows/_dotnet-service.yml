@@ -90,6 +90,25 @@ jobs:
           image-ref: ${{ inputs.service-name }}:${{ github.sha }}
           exit-code: '1'
           severity: 'CRITICAL'
-      # push para o Harbor + assinatura cosign entram quando o registry da fase 1 subir:
-      # - docker push harbor.interno/plataforma/${{ inputs.service-name }}:${{ github.sha }}
-      # - cosign sign --yes harbor.interno/plataforma/${{ inputs.service-name }}@<digest>
+
+      # ── Supply chain: só imagem escaneada, publicada e ASSINADA sai daqui ──
+      # Registry: GHCR (grátis no repo). Migrar pra Harbor+Trivy é trocar o login e o prefixo.
+      - name: Login no GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push da imagem
+        id: push
+        run: |
+          IMAGE="ghcr.io/${{ github.repository_owner }}/plataforma/${{ inputs.service-name }}"
+          IMAGE="${IMAGE,,}"   # GHCR exige minúsculas
+          docker tag ${{ inputs.service-name }}:${{ github.sha }} "$IMAGE:${{ github.sha }}"
+          docker push "$IMAGE:${{ github.sha }}"
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "$IMAGE:${{ github.sha }}")
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+      - name: Instalar cosign
+        uses: sigstore/cosign-installer@v3
+      - name: Assinatura keyless (OIDC do próprio job — sem chave pra vazar)
+        run: cosign sign --yes "${{ steps.push.outputs.digest }}"

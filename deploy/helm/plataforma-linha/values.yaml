@@ -1,0 +1,171 @@
+# Fonte única do deploy K8s. Os defaults abaixo espelham os manifests originais
+# de deploy/*/deployment.yaml (que permanecem como referência de fase 0).
+# Segredos NUNCA entram aqui — Jwt__SigningKey, conexões com senha etc. chegam
+# via External Secrets Operator lendo do OpenBao.
+
+image:
+  registry: harbor.interno/plataforma
+  tag: latest # o CI troca pela tag do commit (ver .github/workflows)
+
+otelEndpoint: http://otel-collector.observabilidade:4317
+
+# Namespace por domínio — isolamento de RBAC, quota e NetworkPolicy por área.
+namespaces:
+  acesso: acesso        # gateway, identity
+  nucleo: nucleo        # core-execution, notifications
+  linha: linha          # edge, ingest, predictive, decision-engine, data-archiver
+  ia: ia                # router, workers de modelo, chatbot, knowledge
+
+services:
+  gateway:
+    namespace: acesso
+    replicas: 2
+    port: 8080
+    env:
+      ConnectionStrings__Valkey: valkey.acesso:6379
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { memory: 256Mi }
+    hpa: { min: 2, max: 10, cpuUtilization: 70 } # borda escala por tráfego
+
+  identity:
+    namespace: acesso
+    replicas: 2
+    port: 8080
+    resources:
+      requests: { cpu: 50m, memory: 128Mi }
+      limits: { memory: 256Mi }
+
+  core-execution:
+    namespace: nucleo
+    replicas: 2
+    port: 8080
+    env:
+      Kafka__Bootstrap: kafka.transporte:9092
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { memory: 256Mi }
+
+  notifications:
+    namespace: nucleo
+    replicas: 1
+    env:
+      Kafka__Bootstrap: kafka.transporte:9092
+      Ntfy__BaseUrl: http://ntfy.observabilidade
+    resources:
+      requests: { cpu: 50m, memory: 128Mi }
+      limits: { memory: 256Mi }
+    kafkaScaler:
+      topic: linha.alertas.v1
+      consumerGroup: notifications
+      minReplicas: 1
+      maxReplicas: 5
+      lagThreshold: "500"
+
+  edge-protocol-gateway:
+    namespace: linha
+    replicas: 1 # 1 por planta/linha física; identidade mTLS própria por instância
+    env:
+      Mqtt__Host: mosquitto.linha
+      Kafka__Bootstrap: kafka.transporte:9092
+      Edge__BufferCapacity: "100000"
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { memory: 512Mi } # buffer store-and-forward vive aqui
+
+  telemetry-ingest:
+    namespace: linha
+    replicas: 1
+    env:
+      Kafka__Bootstrap: kafka.transporte:9092
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { memory: 256Mi }
+    kafkaScaler:
+      topic: linha.telemetria.v1
+      consumerGroup: telemetry-ingest
+      minReplicas: 1
+      maxReplicas: 12 # teto = nº de partições de linha.telemetria.v1
+      lagThreshold: "1000"
+
+  predictive:
+    namespace: linha
+    replicas: 1
+    env:
+      Kafka__Bootstrap: kafka.transporte:9092
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { memory: 512Mi } # um detector por sensor vive em memória
+
+  decision-engine:
+    namespace: linha
+    replicas: 1 # decisões em série por atuador; escalar exige particionar por atuador
+    env:
+      Kafka__Bootstrap: kafka.transporte:9092
+    resources:
+      requests: { cpu: 50m, memory: 128Mi }
+      limits: { memory: 256Mi }
+
+  data-archiver:
+    namespace: linha
+    replicas: 1
+    env:
+      Kafka__Bootstrap: kafka.transporte:9092
+      S3__Endpoint: http://minio.dados:9000
+      S3__Bucket: linha-lake
+      # AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY via External Secrets
+    resources:
+      requests: { cpu: 50m, memory: 128Mi }
+      limits: { memory: 256Mi }
+
+  ai-router:
+    namespace: ia
+    replicas: 1
+    env:
+      Kafka__Bootstrap: kafka.transporte:9092
+    resources:
+      requests: { cpu: 50m, memory: 128Mi }
+      limits: { memory: 256Mi }
+    kafkaScaler:
+      topic: ai.jobs.v1
+      consumerGroup: ai-router
+      minReplicas: 1
+      maxReplicas: 4
+      lagThreshold: "1000"
+
+  ai-worker-llm:
+    namespace: ia
+    replicas: 0 # o KEDA sobe do zero quando a fila enche
+    env:
+      Kafka__Bootstrap: kafka.transporte:9092
+      Vllm__BaseUrl: http://vllm-llama.ia:8000
+    resources:
+      requests: { cpu: 250m, memory: 512Mi }
+      limits: { memory: 1Gi }
+    kafkaScaler:
+      topic: ai.jobs.llm.v1
+      consumerGroup: ai-worker-llm
+      minReplicas: 0
+      maxReplicas: 8
+      lagThreshold: "10"
+
+  chatbot:
+    namespace: ia
+    replicas: 1
+    port: 8080
+    env:
+      Vllm__BaseUrl: http://vllm-llama.ia:8000
+      Knowledge__BaseUrl: http://knowledge.ia:8080
+      CoreExecution__BaseUrl: http://core-execution.nucleo:8080
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { memory: 256Mi }
+
+  knowledge:
+    namespace: ia
+    replicas: 1
+    port: 8080
+    env: {} # ConnectionStrings__Postgres via External Secrets (tem senha)
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { memory: 256Mi }

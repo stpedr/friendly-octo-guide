@@ -1,0 +1,23 @@
+name: k6-smoke
+
+# Smoke de carga contra um ambiente JÁ NO AR (Pi, Jetson, cluster) — por isso é
+# workflow_dispatch com a URL, não gatilho de push: o runner precisa alcançar o alvo.
+on:
+  workflow_dispatch:
+    inputs:
+      base-url:
+        description: URL base do Gateway (ex. http://plataforma.example.com:8180)
+        required: true
+        type: string
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rodar smoke k6
+        uses: grafana/run-k6-action@v1
+        env:
+          BASE_URL: ${{ inputs.base-url }}
+        with:
+          path: tests/k6/smoke.js

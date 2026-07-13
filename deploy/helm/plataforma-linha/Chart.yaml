@@ -1,0 +1,9 @@
+apiVersion: v2
+name: plataforma-linha
+description: >-
+  Plataforma de linha de produção: todos os serviços .NET do monorepo num chart
+  só, parametrizado por values.yaml. O ArgoCD (deploy/argocd) aponta pra cá —
+  o cluster converge pro que está commitado, não pro que alguém aplicou na mão.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

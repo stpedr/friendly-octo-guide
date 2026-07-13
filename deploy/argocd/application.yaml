@@ -1,0 +1,25 @@
+# Application: o cluster converge pro chart commitado — deploy é merge na main.
+# prune remove o que saiu do Git; selfHeal desfaz mudança manual no cluster.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: plataforma-linha
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: plataforma-linha
+  source:
+    repoURL: https://github.com/stpedr/friendly-octo-guide
+    targetRevision: main
+    path: deploy/helm/plataforma-linha
+    helm:
+      valueFiles: [values.yaml]
+  destination:
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false # namespaces vêm do chart, com labels de domínio

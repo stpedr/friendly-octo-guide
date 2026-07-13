@@ -90,10 +90,13 @@ jobs:
       # política do repo só permite actions do GitHub — por isso Trivy/cosign/login
       # entram por script, não por action de marketplace.
       - name: Scan de vulnerabilidades (Trivy) — CRITICAL bloqueia
+        # Imagem oficial do Trivy (não o curl|sh do installer, que quebrava no
+        # download do release): o socket do daemon dá acesso à imagem recém-buildada.
         run: |
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
-            | sh -s -- -b /usr/local/bin v0.58.2
-          trivy image --exit-code 1 --severity CRITICAL --no-progress \
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:0.58.2 image \
+            --exit-code 1 --severity CRITICAL --no-progress --scanners vuln \
             ${{ inputs.service-name }}:${{ github.sha }}
 
       # ── Supply chain: só imagem escaneada, publicada e ASSINADA sai daqui ──

@@ -1,6 +1,7 @@
 name: core-execution
 
 on:
+  workflow_dispatch: # re-run manual (ex.: exercitar o job de imagem na main)
   pull_request:
     paths: ['src/Core.Execution/**', 'src/Platform/**', 'schemas/**']
   push:

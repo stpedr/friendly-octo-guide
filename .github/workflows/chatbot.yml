@@ -1,6 +1,7 @@
 name: chatbot
 
 on:
+  workflow_dispatch: # re-run manual (ex.: exercitar o job de imagem na main)
   pull_request:
     paths: ['src/Chatbot/**', 'src/Platform/**', 'schemas/**']
   push:

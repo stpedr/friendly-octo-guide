@@ -1,6 +1,7 @@
 name: decision-engine
 
 on:
+  workflow_dispatch: # re-run manual (ex.: exercitar o job de imagem na main)
   pull_request:
     paths: ['src/Decision.Engine/**', 'src/Platform/**', 'schemas/**']
   push:

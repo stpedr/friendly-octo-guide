@@ -1,6 +1,7 @@
 name: telemetry-ingest
 
 on:
+  workflow_dispatch: # re-run manual (ex.: exercitar o job de imagem na main)
   pull_request:
     paths: ['src/Telemetry.Ingest/**', 'src/Platform/**', 'schemas/**']
   push:

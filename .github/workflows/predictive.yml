@@ -1,6 +1,7 @@
 name: predictive
 
 on:
+  workflow_dispatch: # re-run manual (ex.: exercitar o job de imagem na main)
   pull_request:
     paths: ['src/Predictive/**', 'src/Platform/**', 'schemas/**']
   push:

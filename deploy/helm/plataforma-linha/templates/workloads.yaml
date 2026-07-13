@@ -21,6 +21,10 @@ spec:
   template:
     metadata:
       labels: { app: {{ $name }} }
+      {{- if $.Values.mesh.enabled }}
+      annotations:
+        linkerd.io/inject: enabled
+      {{- end }}
     spec:
       containers:
         - name: {{ $name }}

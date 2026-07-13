@@ -9,6 +9,12 @@ image:
 
 otelEndpoint: http://otel-collector.observabilidade:4317
 
+# mTLS entre serviços via Linkerd: com o mesh instalado no cluster
+# (deploy/cluster/bootstrap-server.sh), ligar isto injeta o proxy em todo pod —
+# tráfego interno cifrado e autenticado sem mudar uma linha de código.
+mesh:
+  enabled: false
+
 # Namespace por domínio — isolamento de RBAC, quota e NetworkPolicy por área.
 namespaces:
   acesso: acesso        # gateway, identity

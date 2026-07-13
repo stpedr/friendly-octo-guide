@@ -1,0 +1,29 @@
+# Agendamentos do Velero (instalado pelo bootstrap-server.sh, destino = MinIO).
+# Aplicar uma vez: kubectl apply -f deploy/dr/velero-schedule.yaml
+---
+# Diário: tudo da plataforma (objetos + PVs), retenção 30 dias.
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: plataforma-diario
+  namespace: velero
+spec:
+  schedule: "0 3 * * *"
+  template:
+    includedNamespaces: [acesso, nucleo, linha, ia]
+    ttl: 720h
+---
+# Horário: só o estado quente (Postgres via PV), retenção 48 h — encurta o RPO
+# de cluster sem inflar o bucket.
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: dados-quentes-horario
+  namespace: velero
+spec:
+  schedule: "0 * * * *"
+  template:
+    includedNamespaces: [nucleo, ia]
+    labelSelector:
+      matchLabels: { backup: quente }
+    ttl: 48h

@@ -1,0 +1,21 @@
+# Feast — feature store do subsistema preditivo.
+# Offline store = Postgres (as leituras aceitas pelo quality gate);
+# online store = Valkey (protocolo Redis), as MESMAS features servidas com
+# latência de cache pra inferência. Aplicar: cd ml/feast && feast apply
+project: plataforma_linha
+provider: local
+registry: data/registry.db
+
+offline_store:
+  type: postgres
+  host: ${POSTGRES_HOST:-localhost}
+  port: 5432
+  database: linha
+  user: dev
+  password: dev
+
+online_store:
+  type: redis
+  connection_string: ${VALKEY_HOST:-localhost}:6379
+
+entity_key_serialization_version: 3

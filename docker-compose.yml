@@ -97,6 +97,19 @@ services:
     depends_on: [schema-registry]
     restart: "no"
 
+  # ── Stream processing (perfil stream): janelas/joins sobre os tópicos ──
+  # Queries versionadas em deploy/stream/queries.sql (tempestade de alertas,
+  # throughput por linha). SQL contínuo, estado no próprio Kafka.
+  ksqldb:
+    image: confluentinc/ksqldb-server:0.29.0
+    ports: ["8088:8088"]
+    environment:
+      KSQL_BOOTSTRAP_SERVERS: kafka:9092
+      KSQL_LISTENERS: http://0.0.0.0:8088
+      KSQL_KSQL_SERVICE_ID: plataforma-linha
+    depends_on: [kafka]
+    profiles: [stream]
+
   # ── Borda com WAF (perfil waf): NGINX + ModSecurity + OWASP CRS na frente do Gateway ──
   ingress-waf:
     image: owasp/modsecurity-crs:nginx-alpine

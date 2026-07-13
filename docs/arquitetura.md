@@ -84,13 +84,30 @@ reenfileira com tentativa contada até a DLQ.
 - **Multi-tenant decidido**: single-tenant por instância, multi-planta por
   atributo ABAC — ADR em `docs/governanca/multi-tenant.md`.
 
-## O que fica pra fase 2 (e onde encaixa)
+## Fase 2: pronta em código, esperando o cluster
 
-- **mTLS/service mesh (Linkerd)** entre serviços no cluster.
-- **Flink/ksqlDB** quando o scoring precisar de janela/join além do por-sensor.
-- **MirrorMaker 2 + região standby** (DR), **Velero**, **Harbor** substituindo
-  o GHCR quando houver registry próprio.
-- **Feast** (feature store) quando houver mais de um modelo consumindo as
-  mesmas features; MLflow já registra experimentos.
-- **Suíte de eval de IA automatizada** como gate de CI (hoje: manual,
-  `docs/governanca/avaliacao-ia.md`).
+Tudo abaixo está implementado como config/script versionado — o que falta é
+**hardware ligado**, e o caminho é `deploy/cluster/README.md` (k3s com
+pc-pedro como server e Pi/Jetson como agents):
+
+- **Cluster k3s**: bootstrap completo em `deploy/cluster/` (server instala
+  ArgoCD + KEDA + Linkerd + External Secrets + Velero; agents dão join com um comando).
+- **mTLS/service mesh**: `mesh.enabled: true` no values injeta o proxy
+  Linkerd nos 13 serviços — tráfego interno cifrado sem mudar código.
+- **ksqlDB** (perfil `stream` do compose): queries versionadas em
+  `deploy/stream/queries.sql` — tempestade de alertas (5+/10min agregados) e
+  throughput por linha/hora. Telemetria (Avro do codec próprio) entra quando o
+  producer migrar pro wire-format do registry.
+- **LLM real na Jetson**: `deploy/jetson/` serve endpoint OpenAI-compatible —
+  llama.cpp pra Nano (vLLM não roda em JetPack 4), vLLM (imagem NVIDIA) pra
+  Orin. `ai-worker-llm`/`chatbot`/Knowledge já consomem via env.
+- **DR**: MirrorMaker 2 ativo-passivo (`deploy/dr/mm2.properties`), schedules
+  do Velero pro MinIO e runbook de failover/failback com game day trimestral.
+- **Feast**: feature repo em `ml/feast/` (offline = Postgres, online = Valkey,
+  mesmas definições no treino e na inferência).
+- **Harbor**: instrução de adoção no `deploy/cluster/README.md`; GHCR assinado
+  com cosign continua sendo o padrão até existir registry próprio.
+
+Fica genuinamente pra depois: **suíte de eval de IA automatizada** como gate
+de CI (hoje: manual, `docs/governanca/avaliacao-ia.md`) e **Flink** se o
+ksqlDB ficar pequeno.

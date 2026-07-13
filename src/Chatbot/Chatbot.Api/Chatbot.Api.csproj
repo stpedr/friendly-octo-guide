@@ -4,6 +4,9 @@
     <PackageReference Include="ModelContextProtocol.AspNetCore" Version="1.4.1" />
   </ItemGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="Chatbot.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="../Chatbot.Domain/Chatbot.Domain.csproj" />
     <ProjectReference Include="../../Platform/Platform.ServiceDefaults/Platform.ServiceDefaults.csproj" />
   </ItemGroup>

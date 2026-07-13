@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <IsPackable>false</IsPackable>
+    <!-- Host fino fora da conta de cobertura: a barra de 80% mede o domínio. -->
+    <Exclude>[Chatbot.Api]*,[Platform.*]*</Exclude>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
@@ -9,5 +11,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../Chatbot.Domain/Chatbot.Domain.csproj" />
+    <ProjectReference Include="../Chatbot.Api/Chatbot.Api.csproj" />
   </ItemGroup>
 </Project>

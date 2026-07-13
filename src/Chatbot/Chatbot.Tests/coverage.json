@@ -1,0 +1,163 @@
+{
+  "Chatbot.Domain.dll": {
+    "/home/user/friendly-octo-guide/src/Chatbot/Chatbot.Domain/Tools/ToolGuardrails.cs": {
+      "Chatbot.Domain.Tools.ToolDefinition": {
+        "System.String Chatbot.Domain.Tools.ToolDefinition::get_Name()": {
+          "Lines": {
+            "15": 30
+          },
+          "Branches": []
+        }
+      },
+      "Chatbot.Domain.Tools.ToolGuardrails": {
+        "Chatbot.Domain.Tools.ToolAccess Chatbot.Domain.Tools.ToolGuardrails::Evaluate(System.String,Platform.AccessControl.Subject,System.Boolean)": {
+          "Lines": {
+            "34": 8,
+            "35": 1,
+            "37": 7,
+            "38": 2,
+            "40": 5,
+            "41": 5,
+            "42": 5
+          },
+          "Branches": [
+            {
+              "Line": 34,
+              "Offset": 14,
+              "EndOffset": 16,
+              "Path": 0,
+              "Ordinal": 0,
+              "Hits": 1
+            },
+            {
+              "Line": 34,
+              "Offset": 14,
+              "EndOffset": 18,
+              "Path": 1,
+              "Ordinal": 1,
+              "Hits": 7
+            },
+            {
+              "Line": 37,
+              "Offset": 30,
+              "EndOffset": 32,
+              "Path": 0,
+              "Ordinal": 2,
+              "Hits": 2
+            },
+            {
+              "Line": 37,
+              "Offset": 30,
+              "EndOffset": 34,
+              "Path": 1,
+              "Ordinal": 3,
+              "Hits": 5
+            },
+            {
+              "Line": 40,
+              "Offset": 41,
+              "EndOffset": 43,
+              "Path": 0,
+              "Ordinal": 4,
+              "Hits": 3
+            },
+            {
+              "Line": 40,
+              "Offset": 41,
+              "EndOffset": 46,
+              "Path": 1,
+              "Ordinal": 5,
+              "Hits": 2
+            },
+            {
+              "Line": 40,
+              "Offset": 44,
+              "EndOffset": 46,
+              "Path": 0,
+              "Ordinal": 6,
+              "Hits": 1
+            },
+            {
+              "Line": 40,
+              "Offset": 44,
+              "EndOffset": 48,
+              "Path": 1,
+              "Ordinal": 7,
+              "Hits": 2
+            }
+          ]
+        },
+        "System.Void Chatbot.Domain.Tools.ToolGuardrails::.ctor(System.Collections.Generic.IReadOnlyDictionary`2<System.String,Chatbot.Domain.Tools.ToolDefinition>)": {
+          "Lines": {
+            "30": 4
+          },
+          "Branches": []
+        }
+      }
+    },
+    "/home/user/friendly-octo-guide/src/Chatbot/Chatbot.Domain/Rag/RagContextBuilder.cs": {
+      "Chatbot.Domain.Rag.RagDocument": {
+        "System.String Chatbot.Domain.Rag.RagDocument::get_Id()": {
+          "Lines": {
+            "6": 18
+          },
+          "Branches": []
+        }
+      },
+      "Chatbot.Domain.Rag.RagContextBuilder": {
+        "System.Collections.Generic.IReadOnlyList`1<Chatbot.Domain.Rag.RagDocument> Chatbot.Domain.Rag.RagContextBuilder::Select(System.Collections.Generic.IEnumerable`1<Chatbot.Domain.Rag.RagDocument>,Platform.AccessControl.Subject,System.String,System.Int32)": {
+          "Lines": {
+            "19": 4,
+            "20": 4,
+            "22": 4,
+            "24": 4,
+            "25": 7,
+            "26": 6,
+            "27": 6,
+            "28": 5,
+            "29": 4,
+            "30": 7
+          },
+          "Branches": []
+        },
+        "System.Collections.Generic.HashSet`1<System.String> Chatbot.Domain.Rag.RagContextBuilder::Tokenize(System.String)": {
+          "Lines": {
+            "42": 10,
+            "43": 10,
+            "44": 10,
+            "45": 86
+          },
+          "Branches": [
+            {
+              "Line": 42,
+              "Offset": 101,
+              "EndOffset": 80,
+              "Path": 1,
+              "Ordinal": 1,
+              "Hits": 47
+            },
+            {
+              "Line": 42,
+              "Offset": 101,
+              "EndOffset": 103,
+              "Path": 0,
+              "Ordinal": 0,
+              "Hits": 10
+            }
+          ]
+        },
+        "System.Void Chatbot.Domain.Rag.RagContextBuilder::.cctor()": {
+          "Lines": {
+            "34": 1,
+            "35": 1,
+            "36": 1,
+            "37": 1,
+            "38": 1,
+            "39": 1
+          },
+          "Branches": []
+        }
+      }
+    }
+  }
+}

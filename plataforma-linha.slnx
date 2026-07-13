@@ -51,6 +51,16 @@
     <Project Path="src/Decision.Engine/Decision.Engine.Worker/Decision.Engine.Worker.csproj" />
     <Project Path="src/Decision.Engine/Decision.Engine.Tests/Decision.Engine.Tests.csproj" />
   </Folder>
+  <Folder Name="/src/Data.Archiver/">
+    <Project Path="src/Data.Archiver/Data.Archiver.Domain/Data.Archiver.Domain.csproj" />
+    <Project Path="src/Data.Archiver/Data.Archiver.Worker/Data.Archiver.Worker.csproj" />
+    <Project Path="src/Data.Archiver/Data.Archiver.Tests/Data.Archiver.Tests.csproj" />
+  </Folder>
+  <Folder Name="/src/Knowledge/">
+    <Project Path="src/Knowledge/Knowledge.Domain/Knowledge.Domain.csproj" />
+    <Project Path="src/Knowledge/Knowledge.Api/Knowledge.Api.csproj" />
+    <Project Path="src/Knowledge/Knowledge.Tests/Knowledge.Tests.csproj" />
+  </Folder>
   <Folder Name="/src/Chatbot/">
     <Project Path="src/Chatbot/Chatbot.Domain/Chatbot.Domain.csproj" />
     <Project Path="src/Chatbot/Chatbot.Api/Chatbot.Api.csproj" />

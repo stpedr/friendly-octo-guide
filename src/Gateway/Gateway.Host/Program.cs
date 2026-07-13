@@ -1,10 +1,11 @@
-using System.Collections.Concurrent;
 using System.Security.Claims;
 using Gateway.Domain;
+using Gateway.Host;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Platform.AccessControl;
 using Platform.ServiceDefaults;
+using StackExchange.Redis;
 
 // Ponto único de entrada: valida o JWT emitido pelo Identity (ou, quando o Keycloak
 // está configurado, o JWT que o Identity repassa do Keycloak), aplica RBAC/ABAC por
@@ -52,13 +53,33 @@ builder.Services.AddAuthorization();
 builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
 
+// Rate limit: com Valkey configurado o limite vale no agregado entre réplicas;
+// sem ele (dev, instância única) o limitador local por réplica basta.
+var valkeyEndpoint = builder.Configuration.GetConnectionString("Valkey");
+if (!string.IsNullOrEmpty(valkeyEndpoint))
+{
+    builder.Services.AddSingleton<IConnectionMultiplexer>(
+        ConnectionMultiplexer.Connect($"{valkeyEndpoint},abortConnect=false,connectRetry=5"));
+    builder.Services.AddSingleton<IRateLimiter>(sp => new ValkeyRateLimiter(
+        sp.GetRequiredService<IConnectionMultiplexer>(),
+        capacity: 20, refillPerSecond: 10,
+        sp.GetRequiredService<ILogger<ValkeyRateLimiter>>(),
+        instrumentation.Meter));
+}
+else
+{
+    builder.Services.AddSingleton<IRateLimiter>(new InMemoryRateLimiter(capacity: 20, refillPerSecond: 10));
+}
+
 // A tabela de rotas é a política de acesso da borda — versionada junto com o código.
 builder.Services.AddSingleton(new RouteTable()
     .Public("/v1/auth")
     .Public("/healthz")
+    .Public("/rum")
     .Require("/v1/core", RouteRequirement.ForRoles("operador", "admin"))
     .Require("/v1/core/admin", RouteRequirement.ForRoles("admin"))
     .Require("/v1/chat", RouteRequirement.ForRoles("operador", "admin"))
+    .Require("/v1/knowledge", RouteRequirement.ForRoles("operador", "admin"))
     .Require("/v1/linha", new RouteRequirement(
         new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "operador", "admin" },
         new Dictionary<string, string>())));
@@ -68,16 +89,14 @@ var app = builder.Build();
 app.UseAuthentication();
 
 // Rate limit por usuário autenticado (ou IP, pré-login): 20 req de burst, 10 req/s de regime.
-// Estado local por réplica na fase 0; fase 1 move pro Valkey pra valer no agregado.
-var buckets = new ConcurrentDictionary<string, TokenBucket>();
 app.Use(async (ctx, next) =>
 {
     var key = ctx.User.FindFirstValue(ClaimTypes.NameIdentifier)
            ?? ctx.User.FindFirstValue("sub")
            ?? ctx.Connection.RemoteIpAddress?.ToString()
            ?? "anonymous";
-    var bucket = buckets.GetOrAdd(key, _ => new TokenBucket(capacity: 20, refillPerSecond: 10));
-    if (!bucket.TryTake(DateTimeOffset.UtcNow))
+    var limiter = ctx.RequestServices.GetRequiredService<IRateLimiter>();
+    if (!await limiter.TryTakeAsync(key, DateTimeOffset.UtcNow, ctx.RequestAborted))
     {
         ctx.Response.StatusCode = StatusCodes.Status429TooManyRequests;
         return;
@@ -123,6 +142,26 @@ app.Use(async (ctx, next) =>
 });
 
 app.MapGet("/healthz", () => Results.Ok(new { status = "ok" }));
+
+// RUM do front: o PWA manda beacons anônimos de rota/status/duração via sendBeacon.
+// Viram histograma OTel (client.rum.duration) — mesmo pipeline dos serviços.
+var rumDuration = instrumentation.Meter.CreateHistogram<double>("client.rum.duration", unit: "ms");
+app.MapPost("/rum", async (HttpRequest req) =>
+{
+    if (req.ContentLength is > RumBeacon.MaxPayloadBytes)
+        return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
+
+    using var buffer = new MemoryStream();
+    await req.Body.CopyToAsync(buffer, req.HttpContext.RequestAborted);
+    if (!RumBeacon.TryParse(buffer.ToArray(), out var beacon))
+        return Results.BadRequest();
+
+    rumDuration.Record(beacon!.DurationMs,
+        new KeyValuePair<string, object?>("route", beacon.Route),
+        new KeyValuePair<string, object?>("status", beacon.Status));
+    return Results.Accepted();
+});
+
 app.MapReverseProxy();
 
 app.Run();

@@ -15,9 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # Imagem oficial do k6 em vez de action de marketplace: imune à política
+      # de actions do repo (mesma razão do _dotnet-service.yml).
       - name: Rodar smoke k6
-        uses: grafana/run-k6-action@v1
-        env:
-          BASE_URL: ${{ inputs.base-url }}
-        with:
-          path: tests/k6/smoke.js
+        run: |
+          docker run --rm -v "$PWD:/work" -w /work \
+            -e BASE_URL='${{ inputs.base-url }}' \
+            grafana/k6:0.57.0 run tests/k6/smoke.js

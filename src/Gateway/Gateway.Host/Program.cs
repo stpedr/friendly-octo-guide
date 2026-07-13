@@ -6,22 +6,47 @@ using Microsoft.IdentityModel.Tokens;
 using Platform.AccessControl;
 using Platform.ServiceDefaults;
 
-// Ponto único de entrada: valida o JWT emitido pelo Identity, aplica RBAC/ABAC por rota,
-// limita taxa por usuário e propaga o traceparent (W3C) — o trace-id raiz nasce aqui.
+// Ponto único de entrada: valida o JWT emitido pelo Identity (ou, quando o Keycloak
+// está configurado, o JWT que o Identity repassa do Keycloak), aplica RBAC/ABAC por
+// rota, limita taxa por usuário e propaga o traceparent (W3C) — o trace-id raiz nasce aqui.
 
 var instrumentation = new ServiceInstrumentation("gateway");
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddPlatformDefaults(instrumentation);
 
+if (await PlatformSecrets.TryGetAsync(builder.Configuration, "platform/jwt", "signingKey") is { } jwtKey)
+    builder.Configuration["Jwt:SigningKey"] = jwtKey;
+
+// Keycloak configurado (Keycloak:BaseUrl) → valida via JWKS do realm (assinatura assimétrica,
+// Keycloak é a fonte da verdade). Sem ele → chave simétrica compartilhada com o Identity local.
+var keycloakBaseUrl = builder.Configuration["Keycloak:BaseUrl"];
+var keycloakRealm = builder.Configuration["Keycloak:Realm"] ?? "plataforma-linha";
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(o => o.TokenValidationParameters = new TokenValidationParameters
+    .AddJwtBearer(o =>
     {
-        ValidIssuer = "identity",
-        ValidAudience = "plataforma-linha",
-        IssuerSigningKey = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(
-            builder.Configuration["Jwt:SigningKey"] ?? "dev-only-signing-key-with-32-bytes!!")),
-        ClockSkew = TimeSpan.FromSeconds(30),
+        if (!string.IsNullOrEmpty(keycloakBaseUrl))
+        {
+            o.Authority = $"{keycloakBaseUrl}/realms/{keycloakRealm}";
+            o.RequireHttpsMetadata = false; // rede interna do compose/cluster, sem TLS entre serviços ainda
+            o.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidAudience = "plataforma-linha",
+                ClockSkew = TimeSpan.FromSeconds(30),
+            };
+        }
+        else
+        {
+            o.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidIssuer = "identity",
+                ValidAudience = "plataforma-linha",
+                IssuerSigningKey = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(
+                    builder.Configuration["Jwt:SigningKey"] ?? "dev-only-signing-key-with-32-bytes!!")),
+                ClockSkew = TimeSpan.FromSeconds(30),
+            };
+        }
     });
 builder.Services.AddAuthorization();
 builder.Services.AddReverseProxy()

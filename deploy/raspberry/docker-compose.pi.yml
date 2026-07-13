@@ -1,0 +1,305 @@
+# Deploy da plataforma numa Raspberry Pi (ARM64) — edge de verdade rodando na sua rede.
+# Todas as imagens base são multi-arch (arm64); os serviços .NET são construídos AQUI,
+# na própria Pi, a partir dos Dockerfiles do repo (primeiro build demora ~10-20 min).
+#
+# Uso (na Pi):   docker compose -f deploy/raspberry/docker-compose.pi.yml up -d --build
+# Perfis:        --profile observabilidade-completa  → adiciona Loki + Tempo
+#                --profile ia                        → router/worker/chatbot (exige vLLM externo)
+#                --profile simulador                 → sensor MQTT fake pra ver o painel vivo
+#
+# Dimensionado pra Pi 4/5 com 8 GB (perfil padrão ≈ 3,5 GB de RAM). Com 4 GB,
+# suba só: kafka postgres mosquitto edge-protocol-gateway telemetry-ingest predictive.
+
+name: plataforma-linha-pi
+
+# Token de aplicação do OpenBao com ID fixo — simplificação de home-lab (ver
+# deploy/raspberry/openbao/bootstrap.sh) pra Identity/Gateway conseguirem ler
+# secret/platform/* sem um passo extra de descoberta de credencial no boot.
+x-openbao-app-token: &openbao_app_token "plataforma-linha-app-token-a83f1c2e9b74"
+x-otel-env: &otel
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+
+services:
+  # ── Transporte + stores ─────────────────────────────────────────
+  kafka:
+    image: apache/kafka:3.9.0
+    restart: unless-stopped
+    mem_limit: 768m
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      # Aqui tudo é contêiner: anuncia o nome do serviço, não localhost.
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      # Sem isso, os consumers (Predictive/Notifications/Decision.Engine/
+      # Telemetry.Ingest) sobem antes de qualquer producer criar os tópicos,
+      # tomam "Unknown topic or partition" e derrubam o host (StopHost) —
+      # crash loop até alguém publicar. Auto-create resolve no primeiro boot.
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      # JVM contida pra caber na Pi.
+      KAFKA_HEAP_OPTS: "-Xmx384m -Xms256m"
+
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    mem_limit: 512m
+    environment:
+      POSTGRES_DB: linha
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: dev
+    volumes: [pgdata:/var/lib/postgresql/data]
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    mem_limit: 64m
+    ports: ["1883:1883"]   # exposto na rede: sensores/PLCs reais da casa publicam aqui
+    volumes:
+      - ../observability/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+
+  # ── Identidade e segredos ────────────────────────────────────────
+  openbao:
+    image: openbao/openbao:2.4
+    restart: unless-stopped
+    mem_limit: 128m
+    cap_add: [IPC_LOCK]
+    command: ["server", "-config=/openbao/config/config.hcl"]
+    volumes:
+      - ./openbao/config.hcl:/openbao/config/config.hcl:ro
+      - openbao-data:/openbao/data
+
+  # One-shot (roda em todo `up`, ver bootstrap.sh): inicializa/reabre o OpenBao,
+  # grava os segredos da plataforma e renderiza o realm do Keycloak antes dele subir.
+  platform-secrets-init:
+    image: openbao/openbao:2.4
+    restart: "no"
+    entrypoint: ["/bin/sh", "/bootstrap/bootstrap.sh"]
+    environment:
+      OPENBAO_APP_TOKEN: *openbao_app_token
+    volumes:
+      - ./openbao/bootstrap.sh:/bootstrap/bootstrap.sh:ro
+      - ./keycloak/realm-export.json.template:/template/realm-export.json.template:ro
+      - openbao-state:/state
+      - keycloak-import:/kc-import
+    depends_on: [openbao]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4
+    restart: unless-stopped
+    mem_limit: 384m
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin-troque-no-primeiro-login   # console admin só na LAN; troque ao logar
+      KC_HOSTNAME: keycloak
+      KC_HOSTNAME_PORT: "8080"
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      JAVA_OPTS_APPEND: "-Xms96m -Xmx320m"
+    volumes:
+      - keycloak-data:/opt/keycloak/data
+      - keycloak-import:/opt/keycloak/data/import:ro
+    depends_on:
+      platform-secrets-init:
+        condition: service_completed_successfully
+
+  # ── Espinha de observabilidade (essencial) ──────────────────────
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.120.0   # 0.116.0 tem build ARM64 quebrado (binário dinâmico sem ld-linux-aarch64.so.1)
+    restart: unless-stopped
+    mem_limit: 192m
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes:
+      - ../observability/otel-collector.yaml:/etc/otel/config.yaml:ro
+    depends_on: [victoriametrics]
+
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:v1.109.1
+    restart: unless-stopped
+    mem_limit: 256m
+    command: ["--storageDataPath=/storage", "--httpListenAddr=:8428"]
+    volumes: [vmdata:/storage]
+
+  grafana:
+    image: grafana/grafana-oss:11.5.1
+    restart: unless-stopped
+    mem_limit: 256m
+    ports: ["3030:3000"]   # 3000 já usado por outro serviço na Pi (casa-homepage)
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"   # rede doméstica; troque por senha se expor além dela
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+    volumes:
+      - ../observability/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
+
+  ntfy:
+    image: binwiederhier/ntfy:v2.11.0
+    restart: unless-stopped
+    mem_limit: 64m
+    command: ["serve"]
+    ports: ["8090:80"]     # instale o app ntfy no celular e assine http://<ip-da-pi>:8090/oncall-primario
+
+  # Loki + Tempo pesam; entram só no perfil completo.
+  loki:
+    image: grafana/loki:3.3.2
+    restart: unless-stopped
+    mem_limit: 384m
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    profiles: [observabilidade-completa]
+
+  tempo:
+    image: grafana/tempo:2.7.0
+    restart: unless-stopped
+    mem_limit: 384m
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ../observability/tempo.yaml:/etc/tempo/tempo.yaml:ro
+    profiles: [observabilidade-completa]
+
+  # ── Serviços da plataforma (build local, multi-stage) ───────────
+  gateway:
+    build: { context: ../.., dockerfile: src/Gateway/Dockerfile }
+    restart: unless-stopped
+    mem_limit: 192m
+    ports: ["8180:8080"]   # 8080 já usado por outro serviço na Pi (casa-qbittorrent)
+    environment:
+      <<: *otel
+      OpenBao__Addr: http://openbao:8200
+      OpenBao__Token: *openbao_app_token
+      Keycloak__BaseUrl: http://keycloak:8080
+      Keycloak__Realm: plataforma-linha
+    depends_on:
+      identity: { condition: service_started }
+      core-execution: { condition: service_started }
+      platform-secrets-init: { condition: service_completed_successfully }
+
+  identity:
+    build: { context: ../.., dockerfile: src/Identity/Dockerfile }
+    restart: unless-stopped
+    mem_limit: 160m
+    environment:
+      <<: *otel
+      OpenBao__Addr: http://openbao:8200
+      OpenBao__Token: *openbao_app_token
+      Keycloak__BaseUrl: http://keycloak:8080
+      Keycloak__Realm: plataforma-linha
+    depends_on:
+      platform-secrets-init: { condition: service_completed_successfully }
+      keycloak: { condition: service_started }
+
+  core-execution:
+    build: { context: ../.., dockerfile: src/Core.Execution/Dockerfile }
+    restart: unless-stopped
+    mem_limit: 192m
+    environment:
+      <<: *otel
+      Kafka__Bootstrap: kafka:9092
+      ConnectionStrings__Postgres: Host=postgres;Database=linha;Username=dev;Password=dev
+    depends_on: [postgres, kafka]
+
+  notifications:
+    build: { context: ../.., dockerfile: src/Notifications/Dockerfile }
+    restart: unless-stopped
+    mem_limit: 160m
+    environment:
+      <<: *otel
+      Kafka__Bootstrap: kafka:9092
+      Ntfy__BaseUrl: http://ntfy
+    depends_on: [kafka, ntfy]
+
+  edge-protocol-gateway:
+    build: { context: ../.., dockerfile: src/Edge.ProtocolGateway/Dockerfile }
+    restart: unless-stopped
+    mem_limit: 256m
+    environment:
+      <<: *otel
+      Mqtt__Host: mosquitto
+      Kafka__Bootstrap: kafka:9092
+      Edge__BufferCapacity: "50000"
+    depends_on: [mosquitto, kafka]
+
+  telemetry-ingest:
+    build: { context: ../.., dockerfile: src/Telemetry.Ingest/Dockerfile }
+    restart: unless-stopped
+    mem_limit: 192m
+    environment:
+      <<: *otel
+      Kafka__Bootstrap: kafka:9092
+      ConnectionStrings__Postgres: Host=postgres;Database=linha;Username=dev;Password=dev
+    depends_on: [postgres, kafka]
+
+  predictive:
+    build: { context: ../.., dockerfile: src/Predictive/Dockerfile }
+    restart: unless-stopped
+    mem_limit: 192m
+    environment:
+      <<: *otel
+      Kafka__Bootstrap: kafka:9092
+    depends_on: [kafka]
+
+  decision-engine:
+    build: { context: ../.., dockerfile: src/Decision.Engine/Dockerfile }
+    restart: unless-stopped
+    mem_limit: 160m
+    environment:
+      <<: *otel
+      Kafka__Bootstrap: kafka:9092
+    depends_on: [kafka]
+
+  # ── IA (opcional): a Pi não serve LLM; aponte pro vLLM de outra máquina ──
+  ai-router:
+    build: { context: ../.., dockerfile: src/Ai/Dockerfile.router }
+    restart: unless-stopped
+    mem_limit: 160m
+    environment:
+      <<: *otel
+      Kafka__Bootstrap: kafka:9092
+    depends_on: [kafka]
+    profiles: [ia]
+
+  ai-worker-llm:
+    build: { context: ../.., dockerfile: src/Ai/Dockerfile.worker-llm }
+    restart: unless-stopped
+    mem_limit: 192m
+    environment:
+      <<: *otel
+      Kafka__Bootstrap: kafka:9092
+      Vllm__BaseUrl: ${VLLM_BASE_URL:-http://vllm.local:8000}
+    depends_on: [kafka]
+    profiles: [ia]
+
+  chatbot:
+    build: { context: ../.., dockerfile: src/Chatbot/Dockerfile }
+    restart: unless-stopped
+    mem_limit: 192m
+    environment:
+      <<: *otel
+      Vllm__BaseUrl: ${VLLM_BASE_URL:-http://vllm.local:8000}
+    profiles: [ia]
+
+  # ── Simulador de sensor: publica leituras MQTT pra ver o fluxo inteiro vivo ──
+  sensor-simulador:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    mem_limit: 32m
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          V=$$(awk 'BEGIN{srand(); printf "%.1f", 780+rand()*60}')
+          mosquitto_pub -h mosquitto -t "linha/2/sensor/temp-forno-01" \
+            -m "{\"value\": $$V, \"measuredAt\": \"$$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}"
+          sleep 2
+        done
+    depends_on: [mosquitto]
+    profiles: [simulador]
+
+volumes:
+  pgdata:
+  vmdata:
+  openbao-data:
+  openbao-state:
+  keycloak-data:
+  keycloak-import:

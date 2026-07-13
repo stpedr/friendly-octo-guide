@@ -1,0 +1,124 @@
+{
+  "realm": "plataforma-linha",
+  "enabled": true,
+  "sslRequired": "none",
+  "otpPolicyType": "totp",
+  "otpPolicyAlgorithm": "HmacSHA1",
+  "otpPolicyDigits": 6,
+  "otpPolicyPeriod": 30,
+  "otpPolicyLookAheadWindow": 1,
+  "roles": {
+    "realm": [
+      { "name": "admin", "description": "Acesso administrativo pleno" },
+      { "name": "operador", "description": "Opera a linha designada por planta/linha/turno" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "identity-api",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "__CLIENT_SECRET__",
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "protocolMappers": [
+        {
+          "name": "realm-roles-as-role-claim",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "role",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "false"
+          }
+        },
+        {
+          "name": "audience-plataforma-linha",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "plataforma-linha",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "attr-planta",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "planta",
+            "claim.name": "attr:planta",
+            "jsonType.label": "String",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "false"
+          }
+        },
+        {
+          "name": "attr-linha",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "linha",
+            "claim.name": "attr:linha",
+            "jsonType.label": "String",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "false"
+          }
+        },
+        {
+          "name": "attr-turno",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "turno",
+            "claim.name": "attr:turno",
+            "jsonType.label": "String",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": { "planta": ["A"] },
+      "realmRoles": ["admin"],
+      "credentials": [
+        { "type": "password", "value": "admin-dev", "temporary": false },
+        {
+          "type": "otp",
+          "credentialData": "{\"subType\":\"totp\",\"digits\":6,\"period\":30,\"algorithm\":\"HmacSHA1\"}",
+          "secretData": "{\"value\":\"dev-seed-admin-0123\"}"
+        }
+      ]
+    },
+    {
+      "username": "operador",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": { "planta": ["A"], "linha": ["2"], "turno": ["dia"] },
+      "realmRoles": ["operador"],
+      "credentials": [
+        { "type": "password", "value": "operador-dev", "temporary": false },
+        {
+          "type": "otp",
+          "credentialData": "{\"subType\":\"totp\",\"digits\":6,\"period\":30,\"algorithm\":\"HmacSHA1\"}",
+          "secretData": "{\"value\":\"dev-seed-operador-0123\"}"
+        }
+      ]
+    }
+  ]
+}

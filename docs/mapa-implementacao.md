@@ -3,6 +3,7 @@ id: mapa-implementacao
 title: Mapa completo da implementação
 sidebar_position: 2
 hide_title: true
+hide_table_of_contents: true
 wrapperClassName: architecture-map-page
 description: Mapa técnico completo dos clientes, serviços, tópicos, dados, observabilidade e deploy da plataforma de linha.
 ---
@@ -27,6 +28,358 @@ description: Mapa técnico completo dos clientes, serviços, tópicos, dados, ob
   <span><i className="legend-dot data-dot"></i>Dados</span>
   <span><i className="legend-dot obs-dot"></i>Observabilidade</span>
 </div>
+
+<nav className="map-section-nav" aria-label="Níveis de leitura do mapa">
+  <a href="#visao-macro">Visão macro</a>
+  <a href="#paineis-tecnicos">Painéis técnicos</a>
+  <a href="#mapa-completo">Mapa completo</a>
+</nav>
+
+<section className="diagram-panel diagram-panel--macro" id="visao-macro">
+  <div className="diagram-panel-heading">
+    <div className="diagram-panel-title">
+      <span className="diagram-panel-index">MACRO</span>
+      <div>
+        <h2>Visão macro da plataforma</h2>
+        <p>O caminho principal em uma leitura: quem entra, onde a regra roda, como os eventos circulam, onde os dados ficam e como tudo é operado.</p>
+      </div>
+    </div>
+    <DiagramDownload filename="plataforma-visao-macro" />
+  </div>
+
+```mermaid
+flowchart TB
+  subgraph USERFLOW["Fluxo do usuário"]
+    direction LR
+    USERS["Operador<br/>PWA · Tauri"] --> ACCESS["Acesso seguro<br/>WAF · Gateway · Identity"] --> SERVICES["Domínio .NET<br/>Core · Chat · Knowledge · Agents"]
+  end
+
+  subgraph EVENTFLOW["Fluxo industrial e assíncrono"]
+    direction LR
+    EDGE["Fábrica<br/>PLC · MQTT · Edge"] --> KAFKA[("Kafka<br/>eventos e filas")] --> WORKERS["Processamento<br/>Ingest · Predictive · Decision · IA"]
+  end
+
+  DATA["Dados e modelos<br/>PostgreSQL · MinIO · MLflow"]
+  OBS["Observabilidade<br/>OTel · Grafana · Loki · Tempo · VM"]
+  DELIVERY["Entrega<br/>CI · ArgoCD · Helm · KEDA"]
+  SERVICES --> KAFKA
+  SERVICES --> DATA
+  WORKERS --> DATA
+  OBS -. mede tudo .-> USERFLOW
+  OBS -. mede tudo .-> EVENTFLOW
+  DELIVERY -. implanta e escala .-> USERFLOW
+  DELIVERY -. implanta e escala .-> EVENTFLOW
+
+  classDef client fill:#e8f2ff,stroke:#2563eb,color:#10233f;
+  classDef access fill:#fff5df,stroke:#d97706,color:#3b2a0b;
+  classDef edge fill:#e5faf6,stroke:#0f766e,color:#123b38;
+  classDef service fill:#f1ebff,stroke:#7c3aed,color:#2e1a54;
+  classDef data fill:#e9f8ef,stroke:#15803d,color:#173d24;
+  classDef obs fill:#fff8df,stroke:#ca8a04,color:#3c300a;
+  class USERS client;
+  class ACCESS access;
+  class EDGE edge;
+  class SERVICES,KAFKA,WORKERS service;
+  class DATA data;
+  class OBS,DELIVERY obs;
+```
+
+  <div className="diagram-reading-path">
+    <strong>Fluxo principal</strong>
+    <span>Cliente → acesso → serviços → Kafka → processamento → dados</span>
+    <span>Observabilidade e GitOps atravessam todas as etapas.</span>
+  </div>
+</section>
+
+<div className="technical-panels-intro" id="paineis-tecnicos">
+  <span className="architecture-eyebrow">DETALHE PROGRESSIVO</span>
+  <h2>Painéis técnicos por domínio</h2>
+  <p>Cada painel isola um contexto operacional. As conexões externas aparecem apenas como entrada ou saída, para manter portas, contratos e responsabilidades legíveis.</p>
+</div>
+
+<section className="diagram-panel" id="clientes-acesso">
+  <div className="diagram-panel-heading">
+    <div className="diagram-panel-title">
+      <span className="diagram-panel-index">01</span>
+      <div>
+        <h2>Clientes, identidade e acesso HTTP</h2>
+        <p>Login, TOTP, autorização, proteção de borda, limitação distribuída e roteamento público.</p>
+      </div>
+    </div>
+    <DiagramDownload filename="01-clientes-identidade-acesso" />
+  </div>
+
+```mermaid
+flowchart LR
+  ADMIN["Admin / operador"] --> PWA["PWA :8081<br/>senha → TOTP · JWT · RUM"]
+  PWA -->|HTTPS /v1| WAF["NGINX + ModSecurity<br/>:8443"]
+  WAF --> GW["Gateway .NET :5180<br/>YARP · RBAC/ABAC · 20 req/10s"]
+  GW --> ID["Identity API :5101<br/>login · TOTP · refresh rotativo"]
+  GW --> APIS["APIs .NET<br/>Core · Chat · Knowledge · Agents"]
+  GW --> VALKEY[("Valkey :6379<br/>token bucket Lua")]
+  ID -. OIDC .-> KEYCLOAK["Keycloak<br/>usuários no cluster"]
+  OPENBAO["OpenBao + External Secrets"] -. segredos .-> ID
+  OPENBAO -. JWT .-> GW
+  PWA -->|sendBeacon /rum| GW
+
+  classDef client fill:#e8f2ff,stroke:#2563eb,color:#10233f;
+  classDef access fill:#fff5df,stroke:#d97706,color:#3b2a0b;
+  classDef service fill:#f1ebff,stroke:#7c3aed,color:#2e1a54;
+  class ADMIN,PWA client;
+  class WAF,GW,ID,VALKEY,KEYCLOAK,OPENBAO access;
+  class APIS service;
+```
+</section>
+
+<section className="diagram-panel" id="servicos-dotnet">
+  <div className="diagram-panel-heading">
+    <div className="diagram-panel-title">
+      <span className="diagram-panel-index">02</span>
+      <div>
+        <h2>Serviços de aplicação .NET</h2>
+        <p>Responsabilidades síncronas, chamadas autorizadas e a fronteira transacional entre banco e eventos.</p>
+      </div>
+    </div>
+    <DiagramDownload filename="02-servicos-dotnet" />
+  </div>
+
+```mermaid
+flowchart LR
+  GW["Gateway :5180"] --> CORE["Core.Execution :5102<br/>ordens · estados · outbox"]
+  GW --> CHAT["Chatbot :5103<br/>RAG · guardrails · MCP"]
+  GW --> KNOW["Knowledge :5104<br/>GraphQL · JSONB · pgvector"]
+  GW --> AGENTS["Agents :5105<br/>diagnóstico · relatório · proposta"]
+  CHAT -->|contexto RBAC| KNOW
+  CHAT -->|always_ask| CORE
+  CORE -->|mesma transação| PG[("PostgreSQL<br/>work_orders + outbox")]
+  CORE -->|OutboxRelay| EVENTS[("core.eventos.v1")]
+  AGENTS --> REPORTS[("relatorios.diarios.v1")]
+
+  classDef access fill:#fff5df,stroke:#d97706,color:#3b2a0b;
+  classDef service fill:#f1ebff,stroke:#7c3aed,color:#2e1a54;
+  classDef data fill:#e9f8ef,stroke:#15803d,color:#173d24;
+  class GW access;
+  class CORE,CHAT,KNOW,AGENTS service;
+  class PG,EVENTS,REPORTS data;
+```
+</section>
+
+<section className="diagram-panel" id="edge-eventos">
+  <div className="diagram-panel-heading">
+    <div className="diagram-panel-title">
+      <span className="diagram-panel-index">03</span>
+      <div>
+        <h2>Edge industrial e ingestão de telemetria</h2>
+        <p>Do protocolo de fábrica ao evento canônico, com buffer, validação, persistência e detecção preditiva.</p>
+      </div>
+    </div>
+    <DiagramDownload filename="03-edge-ingestao-telemetria" />
+  </div>
+
+```mermaid
+flowchart LR
+  SENSOR["PLC / sensor"] -->|MQTT · Modbus| MQTT["Mosquitto :1883<br/>linha/+/sensor/+"]
+  MQTT --> EDGE["Edge.ProtocolGateway<br/>evento canônico · device identity"]
+  EDGE --> BUFFER["Store-and-forward<br/>backpressure explícito"]
+  BUFFER --> TELEMETRY[("linha.telemetria.v1<br/>Avro SensorReading")]
+  TELEMETRY --> INGEST["Telemetry.Ingest<br/>range · clock drift · staleness"]
+  TELEMETRY --> PRED["Predictive<br/>EWMA · z-score · drift"]
+  TELEMETRY --> ARCHIVER["Data.Archiver<br/>JSONL.gz · replay idempotente"]
+  INGEST --> PG[("PostgreSQL<br/>ON CONFLICT")]
+  INGEST --> QUARANTINE[("telemetria.quarentena.v1")]
+  PRED --> ALERTS[("linha.alertas.v1")]
+  ARCHIVER --> MINIO[("MinIO<br/>linha-lake")]
+
+  classDef edge fill:#e5faf6,stroke:#0f766e,color:#123b38;
+  classDef service fill:#f1ebff,stroke:#7c3aed,color:#2e1a54;
+  classDef data fill:#e9f8ef,stroke:#15803d,color:#173d24;
+  class SENSOR,MQTT,EDGE,BUFFER edge;
+  class INGEST,PRED,ARCHIVER service;
+  class TELEMETRY,PG,QUARANTINE,ALERTS,MINIO data;
+```
+</section>
+
+<section className="diagram-panel" id="decisoes-streaming">
+  <div className="diagram-panel-heading">
+    <div className="diagram-panel-title">
+      <span className="diagram-panel-index">04</span>
+      <div>
+        <h2>Alertas, decisões e streaming contínuo</h2>
+        <p>Escalonamento operacional, aprovação humana, auditoria e agregações contínuas no Kafka.</p>
+      </div>
+    </div>
+    <DiagramDownload filename="04-alertas-decisoes-streaming" />
+  </div>
+
+```mermaid
+flowchart LR
+  ALERTS[("linha.alertas.v1")] --> NOTIFY["Notifications<br/>on-call · ntfy · e-mail"]
+  ALERTS --> AGENTS["Agents<br/>correlação e diagnóstico"]
+  ALERTS --> KSQL["ksqlDB :8088<br/>janelas versionadas"]
+  CORE[("core.eventos.v1")] --> KSQL
+  KSQL --> STORM[("alertas.tempestade.v1")]
+  KSQL --> THROUGHPUT[("linha.throughput.v1")]
+  COMMANDS[("comandos.propostos.v1")] --> DECISION["Decision.Engine<br/>envelope · degrau · regra"]
+  DECISION --> APPROVED[("comandos.aprovados.v1")]
+  DECISION --> PENDING[("comandos.pendentes.v1")]
+  DECISION --> AUDIT[("auditoria.decisoes.v1<br/>desfecho + trace-id")]
+
+  classDef service fill:#f1ebff,stroke:#7c3aed,color:#2e1a54;
+  classDef data fill:#e9f8ef,stroke:#15803d,color:#173d24;
+  class NOTIFY,AGENTS,KSQL,DECISION service;
+  class ALERTS,CORE,STORM,THROUGHPUT,COMMANDS,APPROVED,PENDING,AUDIT data;
+```
+</section>
+
+<section className="diagram-panel" id="ia-assincrona">
+  <div className="diagram-panel-heading">
+    <div className="diagram-panel-title">
+      <span className="diagram-panel-index">05</span>
+      <div>
+        <h2>Subsistema assíncrono de IA</h2>
+        <p>Roteamento por modalidade, workers idempotentes, serving em GPU, retry controlado e DLQ.</p>
+      </div>
+    </div>
+    <DiagramDownload filename="05-subsistema-ia-assincrona" />
+  </div>
+
+```mermaid
+flowchart LR
+  CHAT["Chatbot / serviço solicitante"] --> JOBS[("ai.jobs.v1")]
+  JOBS --> ROUTER["Ai.Router<br/>tipo → tópico · attempts"]
+  ROUTER --> LLMQ[("ai.jobs.llm.v1")]
+  ROUTER --> VISIONQ[("ai.jobs.vision.v1")]
+  ROUTER --> EMBEDQ[("ai.jobs.embedding.v1")]
+  ROUTER --> DLQ[("ai.jobs.dlq.v1")]
+  LLMQ --> LLM["Worker LLM"] --> VLLM["llama.cpp / vLLM :8000"]
+  VISIONQ --> VISION["Worker Vision"] --> VSERVE["Vision serving :8001"]
+  EMBEDQ --> EMBED["Worker Embeddings"] --> ESERVE["Embeddings :8002"]
+  VLLM --> RESULT[("ai.resultados.v1")]
+  VSERVE --> RESULT
+  ESERVE --> RESULT
+  LLM -. falha + 1 attempt .-> JOBS
+  VISION -. falha + 1 attempt .-> JOBS
+  EMBED -. falha + 1 attempt .-> JOBS
+
+  classDef service fill:#f1ebff,stroke:#7c3aed,color:#2e1a54;
+  classDef ai fill:#fff0f2,stroke:#e11d48,color:#4a1723;
+  classDef wait fill:#f4f4f5,stroke:#71717a,color:#27272a,stroke-dasharray:5 5;
+  class CHAT service;
+  class JOBS,ROUTER,LLMQ,VISIONQ,EMBEDQ,DLQ,LLM,VISION,EMBED,RESULT ai;
+  class VLLM,VSERVE,ESERVE wait;
+```
+</section>
+
+<section className="diagram-panel" id="dados-linhagem">
+  <div className="diagram-panel-heading">
+    <div className="diagram-panel-title">
+      <span className="diagram-panel-index">06</span>
+      <div>
+        <h2>Persistência, lake, modelos e linhagem</h2>
+        <p>Dados quentes, recuperação, objetos frios, schemas, experimentos e o ponto ainda pendente da linhagem.</p>
+      </div>
+    </div>
+    <DiagramDownload filename="06-dados-lake-modelos-linhagem" />
+  </div>
+
+```mermaid
+flowchart LR
+  APIS["Core · Ingest · Knowledge"] --> PG[("PostgreSQL 17 + pgvector<br/>:5432")]
+  PG --> REPLICA[("Réplica streaming<br/>:5433")]
+  PG --> BACKUP["pg_dump diário<br/>+ WAL archive"]
+  ARCHIVER["Data.Archiver"] --> MINIO[("MinIO :9000/:9001<br/>linha-lake")]
+  PRED["Predictive"] --> MLFLOW["MLflow :5500<br/>modelo ativo"]
+  SCHEMAS["schemas/*.avsc"] --> APICURIO["Apicurio :8085"]
+  APICURIO --> KAFKA[("Kafka contracts")]
+  ARCHIVER --> LINEAGE[("linhagem.openlineage.v1")]
+  LINEAGE -. falta bridge HTTP .-> MARQUEZ["Marquez :5001 / :3012"]
+
+  classDef service fill:#f1ebff,stroke:#7c3aed,color:#2e1a54;
+  classDef data fill:#e9f8ef,stroke:#15803d,color:#173d24;
+  classDef gap fill:#fff0f3,stroke:#b4233f,color:#4a1723,stroke-dasharray:5 5;
+  class APIS,ARCHIVER,PRED service;
+  class PG,REPLICA,BACKUP,MINIO,MLFLOW,SCHEMAS,APICURIO,KAFKA,LINEAGE data;
+  class MARQUEZ gap;
+```
+</section>
+
+<section className="diagram-panel" id="observabilidade">
+  <div className="diagram-panel-heading">
+    <div className="diagram-panel-title">
+      <span className="diagram-panel-index">07</span>
+      <div>
+        <h2>Espinha de observabilidade</h2>
+        <p>Uma emissão OTLP comum para logs, traces e métricas, com correlação, SLO, custo e checks sintéticos.</p>
+      </div>
+    </div>
+    <DiagramDownload filename="07-espinha-observabilidade" />
+  </div>
+
+```mermaid
+flowchart LR
+  SOURCES["Gateway · APIs · Edge<br/>consumers · workers IA"] --> DEFAULTS["Platform.ServiceDefaults<br/>Serilog · Activity · Meter · PII masking"]
+  DEFAULTS -->|OTLP| OTEL["OTel Collector<br/>:4317 / :4318"]
+  OTEL -->|logs| LOKI["Loki :3100"]
+  OTEL -->|traces| TEMPO["Tempo :3200"]
+  OTEL -->|remote_write| VM["VictoriaMetrics :8428"]
+  LOKI --> GRAFANA["Grafana OSS :3000<br/>logs ↔ traces"]
+  TEMPO --> GRAFANA
+  VM --> GRAFANA
+  PYRRA["Pyrra :9099<br/>SLO · error budget"] --> VM
+  OPENCOST["OpenCost :9003<br/>FinOps"] <--> VM
+  KUMA["Uptime Kuma :3001<br/>32 checks"] -. health/UI .-> SOURCES
+
+  classDef service fill:#f1ebff,stroke:#7c3aed,color:#2e1a54;
+  classDef obs fill:#fff8df,stroke:#ca8a04,color:#3c300a;
+  class SOURCES service;
+  class DEFAULTS,OTEL,LOKI,TEMPO,VM,GRAFANA,PYRRA,OPENCOST,KUMA obs;
+```
+</section>
+
+<section className="diagram-panel" id="plataforma-entrega">
+  <div className="diagram-panel-heading">
+    <div className="diagram-panel-title">
+      <span className="diagram-panel-index">08</span>
+      <div>
+        <h2>Plataforma, segurança e entrega</h2>
+        <p>Do commit assinado ao workload escalável, com GitOps, mTLS, segredos e recuperação de desastre.</p>
+      </div>
+    </div>
+    <DiagramDownload filename="08-plataforma-seguranca-entrega" />
+  </div>
+
+```mermaid
+flowchart LR
+  GIT["Commit em main"] --> CI["GitHub Actions<br/>TDD · cobertura · Trivy · cosign"]
+  CI --> IMAGE["Imagem por commit"] --> ARGO["ArgoCD<br/>sync · prune · selfHeal"]
+  ARGO --> HELM["Helm<br/>16 workloads · 4 namespaces"]
+  HELM --> WORKLOADS["APIs · consumers · workers"]
+  SCALE["HPA + KEDA<br/>CPU · lag · GPU scale-to-zero"] -. escala .-> WORKLOADS
+  MESH["Linkerd mTLS"] -. protege .-> WORKLOADS
+  OPENBAO["OpenBao + External Secrets"] -. injeta segredos .-> WORKLOADS
+  DR["Velero · MinIO · MirrorMaker 2<br/>warm standby"] -. restaura e replica .-> WORKLOADS
+  COMPOSE["Docker Compose local"] --> TOOLS["Flipt :4242 · Docusaurus :3003<br/>stack local"]
+
+  classDef access fill:#fff5df,stroke:#d97706,color:#3b2a0b;
+  classDef service fill:#f1ebff,stroke:#7c3aed,color:#2e1a54;
+  classDef obs fill:#fff8df,stroke:#ca8a04,color:#3c300a;
+  class GIT,CI,IMAGE,ARGO,HELM access;
+  class WORKLOADS service;
+  class SCALE,MESH,OPENBAO,DR,COMPOSE,TOOLS obs;
+```
+</section>
+
+<section className="diagram-panel diagram-panel--complete" id="mapa-completo">
+  <div className="diagram-panel-heading">
+    <div className="diagram-panel-title">
+      <span className="diagram-panel-index">FULL</span>
+      <div>
+        <h2>Mapa integral de implementação</h2>
+        <p>Referência de engenharia com todos os serviços, portas, tópicos, stores, estados e integrações em uma única prancha.</p>
+      </div>
+    </div>
+    <DiagramDownload filename="plataforma-mapa-completo" />
+  </div>
 
 ```mermaid
 flowchart TB
@@ -252,6 +605,8 @@ flowchart TB
   class DEFAULTS,OTEL,LOKI,TEMPO,VM,GRAFANA,PYRRA,OPENCOST,KUMA obs;
   class MOBILE,VLLM,VISIONSERVE,EMBEDSERVE wait;
 ```
+
+</section>
 
 ## Leitura rápida
 

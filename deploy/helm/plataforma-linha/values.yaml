@@ -15,6 +15,15 @@ otelEndpoint: http://otel-collector.observabilidade:4317
 mesh:
   enabled: false
 
+# Canary com Argo Rollouts: serviços com porta HTTP (borda/API) sobem a versão
+# nova em fatias, com análise automática por métrica (taxa de sucesso via
+# Prometheus/VictoriaMetrics) entre os passos — regressão faz rollback sozinho.
+# Off por padrão (Deployment simples); requer o controller Argo Rollouts no cluster.
+rollout:
+  enabled: false
+  steps: [10, 30, 60] # % de tráfego por passo, com pausa analisada entre eles
+  successRateThreshold: "0.95"
+
 # Namespace por domínio — isolamento de RBAC, quota e NetworkPolicy por área.
 namespaces:
   acesso: acesso        # gateway, identity

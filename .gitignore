@@ -11,3 +11,6 @@ TestResults/
 clients/desktop/src-tauri/target/
 clients/desktop/src-tauri/gen/
 coverage.json
+
+# Pact contracts gerados (publicados no broker no CI, não versionados)
+src/Contracts/pacts/

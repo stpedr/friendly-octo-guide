@@ -75,4 +75,7 @@
     <Project Path="src/Chatbot/Chatbot.Api/Chatbot.Api.csproj" />
     <Project Path="src/Chatbot/Chatbot.Tests/Chatbot.Tests.csproj" />
   </Folder>
+  <Folder Name="/src/Contracts/">
+    <Project Path="src/Contracts/Contracts.Tests/Contracts.Tests.csproj" />
+  </Folder>
 </Solution>

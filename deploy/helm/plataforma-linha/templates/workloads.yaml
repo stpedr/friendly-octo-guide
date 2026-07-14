@@ -5,9 +5,15 @@ declara hpa, + ScaledObject KEDA quando declara kafkaScaler). Divergência
 de forma entre serviços é decisão de values, não template novo.
 */ -}}
 {{- range $name, $svc := .Values.services }}
+{{- $canary := and $.Values.rollout.enabled $svc.port }}
 ---
+{{- if $canary }}
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+{{- else }}
 apiVersion: apps/v1
 kind: Deployment
+{{- end }}
 metadata:
   name: {{ $name }}
   namespace: {{ $svc.namespace }}
@@ -19,30 +25,18 @@ spec:
   selector:
     matchLabels: { app: {{ $name }} }
   template:
-    metadata:
-      labels: { app: {{ $name }} }
-      {{- if $.Values.mesh.enabled }}
-      annotations:
-        linkerd.io/inject: enabled
-      {{- end }}
-    spec:
-      containers:
-        - name: {{ $name }}
-          image: "{{ $.Values.image.registry }}/{{ $name }}:{{ $.Values.image.tag }}"
-          {{- if $svc.port }}
-          ports: [{ containerPort: {{ $svc.port }} }]
-          readinessProbe:
-            httpGet: { path: /healthz, port: {{ $svc.port }} }
-          {{- end }}
-          env:
-            - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: {{ $.Values.otelEndpoint | quote }}
-            {{- range $key, $value := $svc.env }}
-            - name: {{ $key }}
-              value: {{ $value | quote }}
-            {{- end }}
-          resources:
-            {{- toYaml $svc.resources | nindent 12 }}
+    {{- include "plataforma-linha.podTemplate" (dict "name" $name "svc" $svc "root" $) | nindent 4 }}
+  {{- if $canary }}
+  strategy:
+    canary:
+      # Sobe a versão nova em fatias; entre os passos, análise por métrica
+      # (taxa de sucesso) decide seguir ou fazer rollback automático.
+      steps:
+        {{- range $.Values.rollout.steps }}
+        - setWeight: {{ . }}
+        - pause: { duration: 60 }
+        {{- end }}
+  {{- end }}
 {{- if $svc.port }}
 ---
 apiVersion: v1

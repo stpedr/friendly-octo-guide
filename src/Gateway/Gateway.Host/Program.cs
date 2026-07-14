@@ -80,6 +80,7 @@ builder.Services.AddSingleton(new RouteTable()
     .Require("/v1/core/admin", RouteRequirement.ForRoles("admin"))
     .Require("/v1/chat", RouteRequirement.ForRoles("operador", "admin"))
     .Require("/v1/knowledge", RouteRequirement.ForRoles("operador", "admin"))
+    .Require("/v1/agents", RouteRequirement.ForRoles("operador", "admin"))
     .Require("/v1/linha", new RouteRequirement(
         new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "operador", "admin" },
         new Dictionary<string, string>())));

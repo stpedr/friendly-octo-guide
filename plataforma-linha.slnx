@@ -38,8 +38,16 @@
   <Folder Name="/src/Ai/">
     <Project Path="src/Ai/Ai.Domain/Ai.Domain.csproj" />
     <Project Path="src/Ai/Ai.Router.Worker/Ai.Router.Worker.csproj" />
+    <Project Path="src/Ai/Ai.Worker.Shared/Ai.Worker.Shared.csproj" />
     <Project Path="src/Ai/Ai.Worker.Llm/Ai.Worker.Llm.csproj" />
+    <Project Path="src/Ai/Ai.Worker.Vision/Ai.Worker.Vision.csproj" />
+    <Project Path="src/Ai/Ai.Worker.Embeddings/Ai.Worker.Embeddings.csproj" />
     <Project Path="src/Ai/Ai.Tests/Ai.Tests.csproj" />
+  </Folder>
+  <Folder Name="/src/Agents/">
+    <Project Path="src/Agents/Agents.Domain/Agents.Domain.csproj" />
+    <Project Path="src/Agents/Agents.Api/Agents.Api.csproj" />
+    <Project Path="src/Agents/Agents.Tests/Agents.Tests.csproj" />
   </Folder>
   <Folder Name="/src/Predictive/">
     <Project Path="src/Predictive/Predictive.Domain/Predictive.Domain.csproj" />

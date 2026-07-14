@@ -175,3 +175,45 @@ services:
     resources:
       requests: { cpu: 100m, memory: 128Mi }
       limits: { memory: 256Mi }
+
+  ai-worker-vision:
+    namespace: ia
+    replicas: 0 # KEDA sobe do zero quando a fila de visão enche
+    env:
+      Kafka__Bootstrap: kafka.transporte:9092
+      Vision__BaseUrl: http://vision-serving.ia:8001
+    resources:
+      requests: { cpu: 250m, memory: 512Mi }
+      limits: { memory: 1Gi }
+    kafkaScaler:
+      topic: ai.jobs.vision.v1
+      consumerGroup: ai-worker-vision
+      minReplicas: 0
+      maxReplicas: 6
+      lagThreshold: "10"
+
+  ai-worker-embeddings:
+    namespace: ia
+    replicas: 0
+    env:
+      Kafka__Bootstrap: kafka.transporte:9092
+      Embeddings__BaseUrl: http://embeddings-serving.ia:8002
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits: { memory: 512Mi }
+    kafkaScaler:
+      topic: ai.jobs.embedding.v1
+      consumerGroup: ai-worker-embeddings
+      minReplicas: 0
+      maxReplicas: 8
+      lagThreshold: "50"
+
+  agents:
+    namespace: ia
+    replicas: 1
+    port: 8080
+    env:
+      Kafka__Bootstrap: kafka.transporte:9092
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { memory: 256Mi }

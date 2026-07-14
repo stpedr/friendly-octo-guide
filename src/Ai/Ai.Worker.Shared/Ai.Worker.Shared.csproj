@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="Confluent.Kafka" Version="2.15.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Ai.Domain/Ai.Domain.csproj" />
+    <ProjectReference Include="../../Platform/Platform.ServiceDefaults/Platform.ServiceDefaults.csproj" />
+  </ItemGroup>
+</Project>

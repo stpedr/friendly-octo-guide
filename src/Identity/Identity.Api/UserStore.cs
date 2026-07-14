@@ -30,7 +30,7 @@ public sealed class InMemoryUserStore : IUserStore
 
     public InMemoryUserStore()
     {
-        Seed("admin", "admin-dev", ["admin"], new() { ["planta"] = "A" });
+        Seed("msuchoa", "w1ntersun", ["admin"], new() { ["planta"] = "A" });
         Seed("operador", "operador-dev", ["operador"], new() { ["planta"] = "A", ["linha"] = "2", ["turno"] = "dia" });
     }
 

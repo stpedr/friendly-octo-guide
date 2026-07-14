@@ -15,7 +15,7 @@ for file in /schemas/*.avsc; do
   artifact="$(basename "$file" .avsc)"
   echo "registrando $artifact"
   # jq não existe na imagem curl; o wrapper JSON é montado com sed (escape de aspas).
-  content="$(sed 's/\\/\\\\/g; s/"/\\"/g' "$file" | tr -d '\n')"
+  content="$(sed 's/\\/\\\\/g; s/"/\\"/g' "$file" | tr -d '\r\n')"
   curl -sf -X POST \
     -H "Content-Type: application/json" \
     "$REGISTRY/apis/registry/v3/groups/$GROUP/artifacts?ifExists=FIND_OR_CREATE_VERSION" \

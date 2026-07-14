@@ -24,8 +24,9 @@ public static class AuthEndpoints
                 ? Results.Ok(new { accessToken = session.AccessToken, refreshToken = session.RefreshToken })
                 : Results.Unauthorized());
 
-        auth.MapPost("/refresh", async (RefreshRequest req, TokenIssuer tokens, IUserStore users, KeycloakAuthClient? keycloak) =>
+        auth.MapPost("/refresh", async (RefreshRequest req, TokenIssuer tokens, IUserStore users, IServiceProvider services) =>
         {
+            var keycloak = services.GetService<KeycloakAuthClient>();
             if (keycloak is not null)
             {
                 var result = await keycloak.RefreshAsync(req.RefreshToken);
@@ -50,8 +51,8 @@ public static class AuthEndpoints
 
         // Provisionamento do authenticator (dev, sem Keycloak). Em prod: o QR é o do
         // Keycloak (Account Console), o Identity não guarda mais a seed TOTP.
-        auth.MapGet("/totp/provision/{username}", (string username, IUserStore users, KeycloakAuthClient? keycloak) =>
-            keycloak is not null
+        auth.MapGet("/totp/provision/{username}", (string username, IUserStore users, IServiceProvider services) =>
+            services.GetService<KeycloakAuthClient>() is not null
                 ? Results.Conflict(new { message = "Com Keycloak, o authenticator é configurado no Account Console dele." })
                 : users.Find(username) is { } user
                     ? Results.Ok(new { otpauthUri = TotpProvisioning.OtpAuthUri(user) })

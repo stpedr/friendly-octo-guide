@@ -60,8 +60,8 @@ helm upgrade --install velero vmware-tanzu/velero -n velero --create-namespace \
   --set "initContainers[0].volumeMounts[0].mountPath=/target" \
   --set "initContainers[0].volumeMounts[0].name=plugins" \
   --set credentials.secretContents.cloud="[default]
-aws_access_key_id=dev
-aws_secret_access_key=devdevdev"
+aws_access_key_id=msuchoa
+aws_secret_access_key=w1ntersun"
 
 echo
 echo "══════════════════════════════════════════════════════════════"

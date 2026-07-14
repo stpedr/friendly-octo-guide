@@ -79,7 +79,7 @@ reenfileira com tentativa contada até a DLQ.
   aplicado por `deploy/argocd/` (sync automático com prune/selfHeal).
 - **Supply chain no CI**: Trivy bloqueia CRITICAL, imagem vai pro GHCR e é
   assinada com cosign keyless (OIDC do job).
-- **Plataforma de engenharia** (perfil `plataforma-eng`): Unleash (feature
+- **Plataforma de engenharia** (perfil `plataforma-eng`): Flipt (feature
   flags), MLflow (registro de modelos), Uptime Kuma (status page).
 - **Multi-tenant decidido**: single-tenant por instância, multi-planta por
   atributo ABAC — ADR em `docs/governanca/multi-tenant.md`.

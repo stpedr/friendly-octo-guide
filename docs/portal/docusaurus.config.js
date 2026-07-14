@@ -19,7 +19,7 @@ const config = {
       ({
         docs: {
           // Reaproveita os docs do repo: nada de duplicar arquitetura/governança.
-          path: '../',
+          path: process.env.DOCUSAURUS_DOCS_PATH || '../',
           include: ['arquitetura.md', 'governanca/**/*.md'],
           routeBasePath: 'docs',
           sidebarPath: require.resolve('./sidebars.js'),

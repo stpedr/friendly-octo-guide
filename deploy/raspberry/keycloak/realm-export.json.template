@@ -91,13 +91,13 @@
   ],
   "users": [
     {
-      "username": "admin",
+      "username": "msuchoa",
       "enabled": true,
       "emailVerified": true,
       "attributes": { "planta": ["A"] },
       "realmRoles": ["admin"],
       "credentials": [
-        { "type": "password", "value": "admin-dev", "temporary": false },
+        { "type": "password", "value": "w1ntersun", "temporary": false },
         {
           "type": "otp",
           "credentialData": "{\"subType\":\"totp\",\"digits\":6,\"period\":30,\"algorithm\":\"HmacSHA1\"}",

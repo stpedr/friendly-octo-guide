@@ -101,8 +101,8 @@ services:
     mem_limit: 384m
     command: ["start-dev", "--import-realm"]
     environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin-troque-no-primeiro-login   # console admin só na LAN; troque ao logar
+      KEYCLOAK_ADMIN: msuchoa
+      KEYCLOAK_ADMIN_PASSWORD: w1ntersun   # console admin só na LAN; troque ao logar
       KC_HOSTNAME: keycloak
       KC_HOSTNAME_PORT: "8080"
       KC_HOSTNAME_STRICT: "false"
@@ -314,8 +314,8 @@ services:
     command: server /data --console-address ":9001"
     ports: ["9001:9001"]   # console web; a API S3 fica só na rede interna
     environment:
-      MINIO_ROOT_USER: dev
-      MINIO_ROOT_PASSWORD: devdevdev
+      MINIO_ROOT_USER: msuchoa
+      MINIO_ROOT_PASSWORD: w1ntersun
     volumes: [miniodata:/data]
     profiles: [lake]
 
@@ -328,8 +328,8 @@ services:
       Kafka__Bootstrap: kafka:9092
       S3__Endpoint: http://minio:9000
       S3__Bucket: linha-lake
-      AWS_ACCESS_KEY_ID: dev
-      AWS_SECRET_ACCESS_KEY: devdevdev
+      AWS_ACCESS_KEY_ID: msuchoa
+      AWS_SECRET_ACCESS_KEY: w1ntersun
     depends_on: [kafka, minio]
     profiles: [lake]
 

@@ -29,8 +29,12 @@ if (!string.IsNullOrEmpty(keycloakBaseUrl))
 builder.Services.AddSingleton(instrumentation);
 builder.Services.AddSingleton<IUserStore, InMemoryUserStore>(); // sem Keycloak (dev local): usuários seguem em memória
 builder.Services.AddSingleton<TokenIssuer>();
-builder.Services.AddSingleton(keycloakClient!); // pode ser null — LoginFlow/AuthEndpoints tratam os dois casos
-builder.Services.AddSingleton<LoginFlow>();
+if (keycloakClient is not null)
+    builder.Services.AddSingleton(keycloakClient);
+builder.Services.AddSingleton(sp => new LoginFlow(
+    sp.GetRequiredService<IUserStore>(),
+    sp.GetRequiredService<TokenIssuer>(),
+    keycloakClient));
 
 var app = builder.Build();
 

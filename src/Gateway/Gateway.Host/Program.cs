@@ -85,9 +85,31 @@ builder.Services.AddSingleton(new RouteTable()
         new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "operador", "admin" },
         new Dictionary<string, string>())));
 
+// Deprecação de API versionada (RFC 8594): rota antiga anuncia Sunset ANTES de sumir.
+// Sem entradas por padrão — preenchida quando uma v1 ganhar sucessora v2.
+builder.Services.AddSingleton(new DeprecationTable());
+
 var app = builder.Build();
 
 app.UseAuthentication();
+
+// Anuncia deprecação na resposta de rotas versionadas marcadas (Deprecation/Sunset/Link).
+app.Use(async (ctx, next) =>
+{
+    var deprecation = ctx.RequestServices.GetRequiredService<DeprecationTable>().For(ctx.Request.Path);
+    if (deprecation is not null)
+    {
+        ctx.Response.OnStarting(() =>
+        {
+            ctx.Response.Headers["Deprecation"] = deprecation.Deprecation;
+            ctx.Response.Headers["Sunset"] = deprecation.Sunset;
+            if (deprecation.Successor is { } successor)
+                ctx.Response.Headers["Link"] = $"<{successor}>; rel=\"successor-version\"";
+            return Task.CompletedTask;
+        });
+    }
+    await next();
+});
 
 // Rate limit por usuário autenticado (ou IP, pré-login): 20 req de burst, 10 req/s de regime.
 app.Use(async (ctx, next) =>

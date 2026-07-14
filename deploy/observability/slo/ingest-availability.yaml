@@ -1,0 +1,18 @@
+# SLO de disponibilidade da ingestão: 99,9% das leituras aceitas pelo quality gate
+# (o resto vira quarentena, que é comportamento correto, não erro).
+apiVersion: pyrra.dev/v1alpha1
+kind: ServiceLevelObjective
+metadata:
+  name: ingest-availability
+  labels:
+    pyrra.dev/team: plataforma
+spec:
+  target: "99.9"
+  window: 4w
+  description: 99,9% das leituras entram no pipeline (aceitas + quarentena com motivo).
+  indicator:
+    ratio:
+      errors:
+        metric: ingest_readings_quarantined_total{reason="MalformedPayload"}
+      total:
+        metric: ingest_readings_accepted_total

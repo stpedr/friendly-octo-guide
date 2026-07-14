@@ -2,6 +2,7 @@
 -- Um cluster Postgres, vários bancos: isola dados por domínio sem operar N instâncias.
 CREATE DATABASE knowledge;
 CREATE DATABASE unleash;
+CREATE DATABASE marquez;
 
 -- Usuário de replicação da réplica de leitura (perfil ha).
 CREATE ROLE replicator WITH REPLICATION LOGIN PASSWORD 'replicator-dev';

@@ -152,6 +152,61 @@ services:
     volumes: [kumadata:/app/data]
     profiles: [plataforma-eng]
 
+  # Linhagem OpenLineage: consome os eventos do Data.Archiver (e futuros produtores)
+  # e mostra o grafo de proveniência do dado. API + web.
+  marquez:
+    image: marquezproject/marquez:0.49.0
+    command: ["./entrypoint.sh"]
+    ports: ["5001:5000", "5011:5001"]
+    environment:
+      MARQUEZ_CONFIG: /usr/src/app/marquez.dev.yml
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: marquez
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: dev
+    depends_on: [postgres]
+    profiles: [plataforma-eng]
+  marquez-web:
+    image: marquezproject/marquez-web:0.49.0
+    ports: ["3002:3000"]
+    environment:
+      MARQUEZ_HOST: marquez
+      MARQUEZ_PORT: "5000"
+    depends_on: [marquez]
+    profiles: [plataforma-eng]
+
+  # FinOps: custo de GPU/storage/Kafka vira métrica no MESMO Grafana.
+  # Aponta pro VictoriaMetrics (Prometheus-compatível) — um TSDB a menos.
+  opencost:
+    image: ghcr.io/opencost/opencost:1.113.0
+    ports: ["9003:9003"]
+    environment:
+      PROMETHEUS_SERVER_ENDPOINT: http://victoriametrics:8428
+      CLOUD_PROVIDER_API_KEY: ""    # on-prem: custo por recurso vem de tabela local, não de cloud
+    depends_on: [victoriametrics]
+    profiles: [plataforma-eng]
+
+  # SLO + error budget: cada serviço declara SLO (deploy/observability/slo/),
+  # o budget queimando aparece no Grafana e congela deploy arriscado.
+  pyrra:
+    image: ghcr.io/pyrra-dev/pyrra:v0.8.4
+    command: ["filesystem", "--prometheus-url=http://victoriametrics:8428"]
+    ports: ["9099:9099"]
+    volumes:
+      - ./deploy/observability/slo:/etc/pyrra:ro
+    depends_on: [victoriametrics]
+    profiles: [plataforma-eng]
+
+  # Portal de docs da plataforma (Docusaurus) — fonte única de docs versionada.
+  docs-portal:
+    image: node:22-alpine
+    working_dir: /site
+    command: ["sh", "-c", "npm install && npm run start -- --host 0.0.0.0"]
+    ports: ["3003:3000"]
+    volumes:
+      - ./docs/portal:/site
+    profiles: [plataforma-eng]
+
   # Broker MQTT da borda (na fábrica real, roda na DMZ industrial — nível 3.5 do Purdue).
   mosquitto:
     image: eclipse-mosquitto:2

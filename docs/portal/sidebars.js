@@ -1,0 +1,17 @@
+// Sidebar gerada a partir das pastas de docs (arquitetura + governança).
+/** @type {import('@docusaurus/plugin-content-docs').SidebarsConfig} */
+module.exports = {
+  docs: [
+    'arquitetura',
+    {
+      type: 'category',
+      label: 'Governança',
+      items: [
+        'governanca/dados-pii-lgpd',
+        'governanca/continuidade-rpo-rto',
+        'governanca/avaliacao-ia',
+        'governanca/multi-tenant',
+      ],
+    },
+  ],
+};

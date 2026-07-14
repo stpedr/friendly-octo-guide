@@ -27,6 +27,7 @@ public static class PlatformDefaults
         builder.Services.AddSerilog(cfg => cfg
             .ReadFrom.Configuration(builder.Configuration)
             .Enrich.WithProperty("service", instrumentation.ServiceName)
+            .Enrich.With(Platform.ServiceDefaults.Security.PiiMaskingEnricher.Default()) // PII nunca sai em claro
             .WriteTo.Console(formatProvider: null));
 
         builder.Services.AddOpenTelemetry()

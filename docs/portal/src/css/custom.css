@@ -1,0 +1,5 @@
+/* Tema mínimo do portal — herda o preset clássico do Docusaurus. */
+:root {
+  --ifm-color-primary: #0b6b5a;
+  --ifm-code-font-size: 95%;
+}

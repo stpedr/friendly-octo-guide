@@ -1,0 +1,63 @@
+# Serving de LLM na Jetson — o "GPU pool" caseiro da plataforma.
+# Os dois perfis expõem o MESMO contrato (OpenAI-compatible em :8000), que é o
+# que ai-worker-llm e chatbot já consomem via VLLM_BASE_URL. Escolha UM:
+#
+#   Jetson Nano (4GB, JetPack 4/CUDA 10 — vLLM NÃO roda nela):
+#     docker compose -f deploy/jetson/docker-compose.jetson.yml --profile nano up -d
+#
+#   Jetson Orin (JetPack 6+, tem CUDA moderna):
+#     docker compose -f deploy/jetson/docker-compose.jetson.yml --profile orin up -d
+#
+# Nas outras máquinas da plataforma, aponte: VLLM_BASE_URL=http://<ip-da-jetson>:8000
+#
+# Modelos: baixe um GGUF quantizado pra pasta ./models (ex.: Qwen2.5-1.5B-Instruct
+# Q4_K_M ≈ 1 GB — o que cabe com folga numa Nano de 4 GB).
+
+name: plataforma-llm-jetson
+
+services:
+  # ── Nano: llama.cpp (CPU/CUDA legada), binário pequeno, contrato OpenAI ──
+  llama-cpp:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    restart: unless-stopped
+    ports: ["8000:8080"]
+    volumes: ["./models:/models:ro"]
+    command:
+      - --model
+      - /models/${LLM_MODEL:-qwen2.5-1.5b-instruct-q4_k_m.gguf}
+      - --ctx-size
+      - "4096"
+      - --parallel
+      - "2"
+      - --host
+      - 0.0.0.0
+    profiles: [nano]
+
+  # ── Orin: vLLM de verdade (batching contínuo, KV-cache paginado) ──
+  # Imagem oficial da NVIDIA pra Jetson/ARM64 com CUDA (JetPack 6+).
+  vllm:
+    image: nvcr.io/nvidia/vllm:25.09-py3
+    restart: unless-stopped
+    ports: ["8000:8000"]
+    volumes: ["./models:/models", "hf-cache:/root/.cache/huggingface"]
+    environment:
+      HF_TOKEN: ${HF_TOKEN:-}
+    command:
+      - vllm
+      - serve
+      - ${VLLM_MODEL:-Qwen/Qwen2.5-3B-Instruct}
+      - --max-model-len
+      - "8192"
+      - --gpu-memory-utilization
+      - "0.85"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    profiles: [orin]
+
+volumes:
+  hf-cache:

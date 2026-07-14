@@ -1,0 +1,18 @@
+# AppProject: limita ONDE o GitOps pode escrever — só nos namespaces da
+# plataforma, só a partir deste repo. Compromisso de blast radius, em YAML.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: plataforma-linha
+  namespace: argocd
+spec:
+  description: Plataforma de linha de produção (monorepo .NET)
+  sourceRepos:
+    - https://github.com/stpedr/friendly-octo-guide
+  destinations:
+    - { namespace: acesso, server: https://kubernetes.default.svc }
+    - { namespace: nucleo, server: https://kubernetes.default.svc }
+    - { namespace: linha, server: https://kubernetes.default.svc }
+    - { namespace: ia, server: https://kubernetes.default.svc }
+  clusterResourceWhitelist:
+    - { group: "", kind: Namespace } # o chart cria os namespaces por domínio

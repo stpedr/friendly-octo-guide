@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Agents.Domain/Agents.Domain.csproj" />
+  <Project Path="Agents.Api/Agents.Api.csproj" />
+  <Project Path="Agents.Tests/Agents.Tests.csproj" />
+</Solution>

@@ -1,0 +1,28 @@
+name: contracts
+
+# Testes de contrato (Pact) consumidor-dirigidos: o consumidor gera o pact, que o
+# provider verifica. Sem imagem — é teste, não serviço.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['src/Contracts/**', 'src/Core.Execution/**', 'src/Gateway/**']
+  push:
+    branches: [main]
+    paths: ['src/Contracts/**', 'src/Core.Execution/**', 'src/Gateway/**']
+
+jobs:
+  pact:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: '10.0.x' }
+      - name: Gerar e verificar os pacts do consumidor
+        run: dotnet test src/Contracts/Contracts.Tests --configuration Release
+      - name: Publicar o pact como artefato (broker entra na fase 2)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pacts
+          path: src/Contracts/pacts/*.json
+          if-no-files-found: warn

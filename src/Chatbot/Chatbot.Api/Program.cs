@@ -37,6 +37,17 @@ builder.Services.AddHttpClient<VllmChat>(c =>
 builder.Services.AddSingleton(ToolRegistry.Default());
 builder.Services.AddSingleton(RagCorpus.Seed());
 
+// Ferramentas via MCP: agentes descobrem e chamam pelo protocolo padrão, e cada
+// chamada passa pelos mesmos guardrails (RBAC + always_ask) do endpoint REST.
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClient("core-execution", c =>
+    c.BaseAddress = new Uri(builder.Configuration["CoreExecution:BaseUrl"] ?? "http://core-execution:8080"));
+builder.Services.AddHttpClient("knowledge", c =>
+    c.BaseAddress = new Uri(builder.Configuration["Knowledge:BaseUrl"] ?? "http://knowledge:8080"));
+builder.Services.AddMcpServer()
+    .WithHttpTransport()
+    .WithTools<PlataformaTools>();
+
 var app = builder.Build();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -86,6 +97,8 @@ app.MapPost("/v1/chat/ferramentas/{name}", (
         _ => Results.NotFound(new { status = "desconhecida" }),
     };
 }).RequireAuthorization();
+
+app.MapMcp("/v1/chat/mcp").RequireAuthorization();
 
 app.Run();
 

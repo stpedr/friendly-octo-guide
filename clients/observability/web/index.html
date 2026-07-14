@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Observabilidade · Plataforma de Linha</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- Trava local por TOTP: o dashboard de observabilidade não abre sem o
+         segundo fator, mesmo offline (o app pode ter métricas sensíveis em cache). -->
+    <main id="lock" class="lock">
+      <h1>Observabilidade</h1>
+      <p id="lock-msg">Desbloqueie com o código do seu authenticator.</p>
+      <form id="unlock-form">
+        <input id="totp" inputmode="numeric" autocomplete="one-time-code"
+               pattern="[0-9]{6}" maxlength="6" placeholder="000000" aria-label="Código TOTP" />
+        <button type="submit">Desbloquear</button>
+      </form>
+      <details id="enroll">
+        <summary>Primeiro uso (registrar seed)</summary>
+        <input id="seed" placeholder="Seed Base32 do authenticator" aria-label="Seed Base32" />
+        <button id="save-seed" type="button">Salvar seed neste dispositivo</button>
+      </details>
+    </main>
+
+    <!-- Grafana embutido; o endereço vem do shell (window.GRAFANA_URL). -->
+    <section id="dash" class="dash" hidden>
+      <div id="offline" class="offline" hidden>Offline — mostrando o último painel em cache.</div>
+      <iframe id="grafana" title="Grafana" referrerpolicy="no-referrer"></iframe>
+    </section>
+
+    <script src="totp.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

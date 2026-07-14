@@ -1,0 +1,24 @@
+name: sast
+
+# SAST de código-fonte (Semgrep) — complementa o scan de dependências/imagem do
+# Trivy. Imagem oficial em vez de action de marketplace (mesma razão do Trivy):
+# imune à política de actions do repo. Findings de severidade ERROR reprovam.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['src/**', 'clients/**']
+  push:
+    branches: [main]
+    paths: ['src/**', 'clients/**']
+
+jobs:
+  semgrep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Semgrep (regras community p/ C#/JS + segurança)
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src semgrep/semgrep:1.99.0 \
+            semgrep scan --config p/csharp --config p/javascript --config p/secrets \
+            --error --skip-unknown-extensions \
+            --exclude 'bin' --exclude 'obj' --exclude 'node_modules'

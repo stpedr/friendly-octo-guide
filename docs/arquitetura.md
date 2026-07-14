@@ -57,15 +57,57 @@ reenfileira com tentativa contada até a DLQ.
   (e grita) em vez de descartar na borda, outbox com backoff — cada caminho de
   falha tem destino e métrica.
 
-## O que fica pra fase 1 (e onde encaixa)
+## Fase 1: o que já entrou
 
-- **Keycloak** assume OIDC; o Identity vira fachada/emissor interno ou é absorvido.
-- **OpenBao + External Secrets**: chaves JWT e seeds TOTP saem da config.
-- **mTLS/service mesh (Linkerd)**, WAF (Coraza) na frente do Gateway.
-- **Valkey** assume rate limit distribuído, idempotência entre réplicas e cache de sessão.
-- **pgvector + embeddings workers** substituem a relevância lexical do RAG.
-- **Flink/ksqlDB** quando o scoring precisar de janela/join além do por-sensor.
-- **MirrorMaker 2 + região standby** (DR), **Velero**, **Harbor/cosign** (o CI já
-  tem o degrau de scan Trivy), **ArgoCD** aplicando `deploy/`.
-- **Multi-tenant continua em aberto** — como na proposta: decide antes de
-  detalhar backup/DR de verdade.
+- **Keycloak + OpenBao**: Identity delega login quando configurado; Gateway
+  valida via JWKS do realm; segredos (chave JWT, client secret) saem do OpenBao.
+- **Valkey** assume o rate limit distribuído do Gateway (token bucket em Lua
+  atômico, fail-open pro limitador local — `ValkeyRateLimiter`).
+- **pgvector**: serviço `src/Knowledge/` (GraphQL via HotChocolate, JSONB +
+  índice HNSW, visibilidade RBAC filtrada na query); embeddings via endpoint
+  OpenAI-compatível ou embedder local de dev.
+- **MCP**: as ferramentas do Chatbot são um MCP server real (`/v1/chat/mcp`),
+  mesmos guardrails do REST.
+- **Data lake**: `src/Data.Archiver/` arquiva o tópico de telemetria no
+  MinIO/S3 (JSONL.gz, partição Hive-style, replay idempotente).
+- **WAF (ModSecurity + OWASP CRS)** na frente do Gateway — perfil `waf` dos composes.
+- **Postgres HA caseiro**: WAL archiving + dump diário + réplica streaming
+  (perfil `ha`) — RPO/RTO formalizados em `docs/governanca/`.
+- **Schema Registry (Apicurio)** versionando os `.avsc` (o codec fixo continua
+  sendo o contrato executável).
+- **Helm + ArgoCD**: `deploy/helm/plataforma-linha` (chart único, 13 serviços)
+  aplicado por `deploy/argocd/` (sync automático com prune/selfHeal).
+- **Supply chain no CI**: Trivy bloqueia CRITICAL, imagem vai pro GHCR e é
+  assinada com cosign keyless (OIDC do job).
+- **Plataforma de engenharia** (perfil `plataforma-eng`): Unleash (feature
+  flags), MLflow (registro de modelos), Uptime Kuma (status page).
+- **Multi-tenant decidido**: single-tenant por instância, multi-planta por
+  atributo ABAC — ADR em `docs/governanca/multi-tenant.md`.
+
+## Fase 2: pronta em código, esperando o cluster
+
+Tudo abaixo está implementado como config/script versionado — o que falta é
+**hardware ligado**, e o caminho é `deploy/cluster/README.md` (k3s com
+pc-pedro como server e Pi/Jetson como agents):
+
+- **Cluster k3s**: bootstrap completo em `deploy/cluster/` (server instala
+  ArgoCD + KEDA + Linkerd + External Secrets + Velero; agents dão join com um comando).
+- **mTLS/service mesh**: `mesh.enabled: true` no values injeta o proxy
+  Linkerd nos 13 serviços — tráfego interno cifrado sem mudar código.
+- **ksqlDB** (perfil `stream` do compose): queries versionadas em
+  `deploy/stream/queries.sql` — tempestade de alertas (5+/10min agregados) e
+  throughput por linha/hora. Telemetria (Avro do codec próprio) entra quando o
+  producer migrar pro wire-format do registry.
+- **LLM real na Jetson**: `deploy/jetson/` serve endpoint OpenAI-compatible —
+  llama.cpp pra Nano (vLLM não roda em JetPack 4), vLLM (imagem NVIDIA) pra
+  Orin. `ai-worker-llm`/`chatbot`/Knowledge já consomem via env.
+- **DR**: MirrorMaker 2 ativo-passivo (`deploy/dr/mm2.properties`), schedules
+  do Velero pro MinIO e runbook de failover/failback com game day trimestral.
+- **Feast**: feature repo em `ml/feast/` (offline = Postgres, online = Valkey,
+  mesmas definições no treino e na inferência).
+- **Harbor**: instrução de adoção no `deploy/cluster/README.md`; GHCR assinado
+  com cosign continua sendo o padrão até existir registry próprio.
+
+Fica genuinamente pra depois: **suíte de eval de IA automatizada** como gate
+de CI (hoje: manual, `docs/governanca/avaliacao-ia.md`) e **Flink** se o
+ksqlDB ficar pequeno.

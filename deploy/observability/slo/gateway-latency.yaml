@@ -1,0 +1,19 @@
+# SLO do Gateway: 99,5% das requisições sob 300ms numa janela de 4 semanas.
+# O Pyrra gera as regras de burn-rate e o painel; o error budget queimando
+# congela deploy arriscado (checado no CI via query ao Pyrra).
+apiVersion: pyrra.dev/v1alpha1
+kind: ServiceLevelObjective
+metadata:
+  name: gateway-latency
+  labels:
+    pyrra.dev/team: plataforma
+spec:
+  target: "99.5"
+  window: 4w
+  description: 99,5% das requisições do Gateway respondem em menos de 300ms.
+  indicator:
+    latency:
+      success:
+        metric: http_server_request_duration_seconds_bucket{service="gateway",le="0.3"}
+      total:
+        metric: http_server_request_duration_seconds_count{service="gateway"}

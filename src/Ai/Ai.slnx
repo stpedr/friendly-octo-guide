@@ -1,6 +1,9 @@
 <Solution>
   <Project Path="Ai.Domain/Ai.Domain.csproj" />
   <Project Path="Ai.Router.Worker/Ai.Router.Worker.csproj" />
+  <Project Path="Ai.Worker.Shared/Ai.Worker.Shared.csproj" />
   <Project Path="Ai.Worker.Llm/Ai.Worker.Llm.csproj" />
+  <Project Path="Ai.Worker.Vision/Ai.Worker.Vision.csproj" />
+  <Project Path="Ai.Worker.Embeddings/Ai.Worker.Embeddings.csproj" />
   <Project Path="Ai.Tests/Ai.Tests.csproj" />
 </Solution>

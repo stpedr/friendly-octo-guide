@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Knowledge.Domain/Knowledge.Domain.csproj" />
+  <Project Path="Knowledge.Api/Knowledge.Api.csproj" />
+  <Project Path="Knowledge.Tests/Knowledge.Tests.csproj" />
+</Solution>

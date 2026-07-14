@@ -1,6 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <IsPackable>false</IsPackable>
+    <!-- Hosts/loops de worker fora da conta de cobertura: a barra mede o domínio
+         e os processors (parsing/contrato), não o glue de Kafka. -->
+    <Exclude>[Ai.Worker.Shared]*,[Ai.Worker.Llm]*,[Ai.Worker.Vision]*,[Ai.Worker.Embeddings]*,[Platform.*]*</Exclude>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
@@ -9,5 +12,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../Ai.Domain/Ai.Domain.csproj" />
+    <ProjectReference Include="../Ai.Worker.Vision/Ai.Worker.Vision.csproj" />
+    <ProjectReference Include="../Ai.Worker.Embeddings/Ai.Worker.Embeddings.csproj" />
   </ItemGroup>
 </Project>

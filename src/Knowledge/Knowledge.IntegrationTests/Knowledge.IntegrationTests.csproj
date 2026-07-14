@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <!-- Integração real: precisa de um Postgres+pgvector no ar (KNOWLEDGE_PG).
+         Sem a env var, os testes se auto-pulam (não quebram o CI padrão). -->
+    <!-- Sufixo .IntegrationTests não casa a convenção .Tests do Directory.Build.props. -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" PrivateAssets="all" />
+    <PackageReference Include="Xunit.SkippableFact" Version="1.5.23" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Knowledge.Api/Knowledge.Api.csproj" />
+    <ProjectReference Include="../Knowledge.Domain/Knowledge.Domain.csproj" />
+  </ItemGroup>
+</Project>

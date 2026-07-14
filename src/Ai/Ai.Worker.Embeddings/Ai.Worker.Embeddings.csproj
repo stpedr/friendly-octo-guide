@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+  <ItemGroup>
+    <ProjectReference Include="../Ai.Worker.Shared/Ai.Worker.Shared.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Confluent.Kafka;
 using Data.Archiver.Domain.Batching;
+using Data.Archiver.Domain.Lineage;
 using Data.Archiver.Domain.Partitioning;
 using Platform.Contracts;
 
@@ -36,6 +37,11 @@ public sealed partial class ArchiverConsumer(
         };
 
         using var consumer = new ConsumerBuilder<string, byte[]>(consumerConfig).Build();
+        using var lineage = new ProducerBuilder<string, string>(new ProducerConfig
+        {
+            BootstrapServers = options.KafkaBootstrap,
+            EnableIdempotence = true,
+        }).Build();
         consumer.Subscribe(options.Topic);
         LogConsuming(options.Topic, options.Bucket);
 
@@ -66,10 +72,14 @@ public sealed partial class ArchiverConsumer(
             {
                 var key = ArchivePartitioner.ObjectKey(options.Topic, partition, batch.FirstOffset, batch.FirstTimestamp);
                 var lines = batch.Batcher.Drain();
-                var bytes = await store.PutGzipJsonLinesAsync(key, lines, stoppingToken);
+                var bytes = await store.PutGzipJsonLinesAsync(key, lines, options.WormRetention, stoppingToken);
 
                 consumer.Commit([new TopicPartitionOffset(options.Topic, partition, batch.LastOffset + 1)]);
                 batches.Remove(partition);
+
+                // Linhagem: cada objeto arquivado emite um evento OpenLineage
+                // (de onde veio → pra onde foi, com schema e produtor) pro Marquez.
+                await PublishLineageAsync(lineage, partition, batch.FirstOffset, key, lines.Count, stoppingToken);
 
                 ArchiverTelemetry.Records.Add(lines.Count);
                 ArchiverTelemetry.Objects.Add(1);
@@ -77,6 +87,21 @@ public sealed partial class ArchiverConsumer(
                 LogArchived(key, lines.Count, bytes);
             }
         }
+    }
+
+    private static readonly JsonSerializerOptions LineageJson =
+        new(JsonSerializerDefaults.Web) { DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull };
+
+    private async Task PublishLineageAsync(
+        IProducer<string, string> lineage, int partition, long firstOffset, string key, int records, CancellationToken ct)
+    {
+        var evt = LineageBuilder.ForArchivedObject(
+            options.Topic, partition, firstOffset, options.Bucket, key,
+            recordCount: records, schemaVersion: options.SchemaVersion, producerService: options.SourceProducer,
+            runId: Guid.NewGuid(), eventTime: DateTimeOffset.UtcNow);
+
+        await lineage.ProduceAsync(options.LineageTopic,
+            new Message<string, string> { Key = key, Value = JsonSerializer.Serialize(evt, LineageJson) }, ct);
     }
 
     // Linha JSONL: decodificada quando o codec entende, crua (base64) quando não —

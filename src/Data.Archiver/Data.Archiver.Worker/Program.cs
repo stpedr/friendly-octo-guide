@@ -67,7 +67,11 @@ namespace Data.Archiver.Worker
         string Bucket,
         int MaxRecordsPerObject,
         long MaxBytesPerObject,
-        TimeSpan MaxBatchAge)
+        TimeSpan MaxBatchAge,
+        TimeSpan WormRetention,
+        string LineageTopic,
+        string SchemaVersion,
+        string SourceProducer)
     {
         public static ArchiverOptions From(IConfiguration cfg) => new(
             cfg["Kafka:Bootstrap"] ?? "localhost:9092",
@@ -76,6 +80,11 @@ namespace Data.Archiver.Worker
             cfg["S3:Bucket"] ?? "linha-lake",
             cfg.GetValue("Archiver:MaxRecordsPerObject", 5000),
             cfg.GetValue("Archiver:MaxBytesPerObject", 8L * 1024 * 1024),
-            TimeSpan.FromSeconds(cfg.GetValue("Archiver:MaxBatchAgeSeconds", 60)));
+            TimeSpan.FromSeconds(cfg.GetValue("Archiver:MaxBatchAgeSeconds", 60)),
+            // WORM: retenção de imutabilidade do objeto (0 = desligado em dev; anos em prod).
+            TimeSpan.FromDays(cfg.GetValue("Archiver:WormRetentionDays", 0)),
+            cfg["Lineage:Topic"] ?? "linhagem.openlineage.v1",
+            cfg["Lineage:SchemaVersion"] ?? "sensor-reading.v1",
+            cfg["Lineage:SourceProducer"] ?? "telemetry-ingest");
     }
 }

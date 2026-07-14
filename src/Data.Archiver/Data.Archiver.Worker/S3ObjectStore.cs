@@ -19,8 +19,14 @@ public sealed class S3ObjectStore(IAmazonS3 s3, string bucket)
             await s3.PutBucketAsync(bucket, ct);
     }
 
-    /// <summary>Comprime e grava o lote; devolve os bytes escritos (pra métrica).</summary>
-    public async Task<long> PutGzipJsonLinesAsync(string key, IReadOnlyList<string> lines, CancellationToken ct)
+    /// <summary>
+    /// Comprime e grava o lote; devolve os bytes escritos (pra métrica). Com
+    /// <paramref name="wormRetention"/> &gt; 0 aplica object lock (WORM): o objeto
+    /// não pode ser sobrescrito nem apagado até a data de retenção — imutabilidade
+    /// exigida pela governança do Big Data Pool. Exige bucket com Object Lock ligado.
+    /// </summary>
+    public async Task<long> PutGzipJsonLinesAsync(
+        string key, IReadOnlyList<string> lines, TimeSpan wormRetention, CancellationToken ct)
     {
         using var payload = new MemoryStream();
         using (var gzip = new GZipStream(payload, CompressionLevel.Fastest, leaveOpen: true))
@@ -31,13 +37,19 @@ public sealed class S3ObjectStore(IAmazonS3 s3, string bucket)
         }
 
         payload.Position = 0;
-        await s3.PutObjectAsync(new PutObjectRequest
+        var request = new PutObjectRequest
         {
             BucketName = bucket,
             Key = key,
             InputStream = payload,
             ContentType = "application/gzip",
-        }, ct);
+        };
+        if (wormRetention > TimeSpan.Zero)
+        {
+            request.ObjectLockMode = ObjectLockMode.Compliance; // nem o admin apaga antes da data
+            request.ObjectLockRetainUntilDate = DateTime.UtcNow.Add(wormRetention);
+        }
+        await s3.PutObjectAsync(request, ct);
         return payload.Length;
     }
 }

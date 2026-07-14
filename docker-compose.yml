@@ -213,6 +213,7 @@ services:
     volumes:
       - ./docs/portal:/site
       - ./docs/arquitetura.md:/docs-content/arquitetura.md:ro
+      - ./docs/mapa-implementacao.md:/docs-content/mapa-implementacao.md:ro
       - ./docs/governanca:/docs-content/governanca:ro
       - docs-portal-node-modules:/site/node_modules
       - docs-portal-cache:/site/.docusaurus

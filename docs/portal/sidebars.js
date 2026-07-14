@@ -3,6 +3,7 @@
 module.exports = {
   docs: [
     'arquitetura',
+    'mapa-implementacao',
     {
       type: 'category',
       label: 'Governança',

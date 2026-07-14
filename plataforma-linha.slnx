@@ -10,6 +10,7 @@
     <Project Path="src/Gateway/Gateway.Domain/Gateway.Domain.csproj" />
     <Project Path="src/Gateway/Gateway.Host/Gateway.Host.csproj" />
     <Project Path="src/Gateway/Gateway.Tests/Gateway.Tests.csproj" />
+    <Project Path="src/Gateway/Gateway.IntegrationTests/Gateway.IntegrationTests.csproj" />
   </Folder>
   <Folder Name="/src/Identity/">
     <Project Path="src/Identity/Identity.Domain/Identity.Domain.csproj" />
@@ -69,6 +70,7 @@
     <Project Path="src/Knowledge/Knowledge.Domain/Knowledge.Domain.csproj" />
     <Project Path="src/Knowledge/Knowledge.Api/Knowledge.Api.csproj" />
     <Project Path="src/Knowledge/Knowledge.Tests/Knowledge.Tests.csproj" />
+    <Project Path="src/Knowledge/Knowledge.IntegrationTests/Knowledge.IntegrationTests.csproj" />
   </Folder>
   <Folder Name="/src/Chatbot/">
     <Project Path="src/Chatbot/Chatbot.Domain/Chatbot.Domain.csproj" />

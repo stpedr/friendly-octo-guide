@@ -27,6 +27,10 @@ var keycloakRealm = builder.Configuration["Keycloak:Realm"] ?? "plataforma-linha
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(o =>
     {
+        // Preserva os nomes de claim como o Identity emite ("sub", "role", "attr:*") —
+        // sem o remapeamento default (sub→nameidentifier, role→ClaimTypes.Role), que
+        // faria o ClaimsMapper (que lê os nomes crus) não achar papel nenhum.
+        o.MapInboundClaims = false;
         if (!string.IsNullOrEmpty(keycloakBaseUrl))
         {
             o.Authority = $"{keycloakBaseUrl}/realms/{keycloakRealm}";
@@ -90,6 +94,11 @@ builder.Services.AddSingleton(new RouteTable()
 builder.Services.AddSingleton(new DeprecationTable());
 
 var app = builder.Build();
+
+// A plataforma suporta os DOIS modos: single-tenant por instância (default, ADR)
+// e multi-tenant no mesmo cluster. Flag de config lida da app (não um local de
+// startup — assim reflete override/reload e é testável via WebApplicationFactory).
+var multiTenantEnabled = app.Configuration.GetValue("MultiTenant:Enabled", false);
 
 app.UseAuthentication();
 
@@ -159,6 +168,27 @@ app.Use(async (ctx, next) =>
             ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
             return;
         }
+
+        // Isolamento multi-tenant (quando MultiTenant:Enabled): o tenant do recurso
+        // vem do header X-Tenant e tem que bater com o claim do usuário. Desligado
+        // (default, single-tenant por instância), este bloco não interfere.
+        if (multiTenantEnabled)
+        {
+            var resourceTenant = ctx.Request.Headers["X-Tenant"].ToString();
+            if (string.IsNullOrEmpty(resourceTenant))
+            {
+                ctx.Response.StatusCode = StatusCodes.Status400BadRequest; // multi-tenant exige o header
+                return;
+            }
+            var tenantDecision = TenantPolicy.Evaluate(subject, resourceTenant, enabled: true);
+            if (tenantDecision != TenantDecision.Allow)
+            {
+                instrumentation.Meter.CreateCounter<long>("gateway.tenant.denied")
+                    .Add(1, new KeyValuePair<string, object?>("reason", tenantDecision.ToString()));
+                ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
+        }
     }
 
     await next();
@@ -188,3 +218,6 @@ app.MapPost("/rum", async (HttpRequest req) =>
 app.MapReverseProxy();
 
 app.Run();
+
+// Exposto pro teste de integração (WebApplicationFactory<Program>).
+public partial class Program;

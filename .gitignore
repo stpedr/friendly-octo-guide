@@ -9,6 +9,7 @@ TestResults/
 
 # Tauri (clients/desktop)
 clients/desktop/src-tauri/target/
+clients/observability/src-tauri/target/
 clients/desktop/src-tauri/gen/
 coverage.json
 

@@ -33,7 +33,20 @@ builder.Services.AddSingleton(instrumentation);
 builder.Services.AddSingleton<InMemoryUserStore>();
 builder.Services.AddSingleton<IUserStore>(sp => sp.GetRequiredService<InMemoryUserStore>());
 builder.Services.AddSingleton<IUserAdmin>(sp => sp.GetRequiredService<InMemoryUserStore>());
-builder.Services.AddSingleton<IAdminAuditTrail, LoggingAdminAuditTrail>(); // fase 0: log; fase 1: outbox → WORM
+// Trilha de auditoria: com Postgres configurado, grava durável no outbox e um
+// relay leva ao Kafka (auditoria.admin.v1) → lake WORM (fase 1). Sem Postgres
+// (dev local puro), cai no sink de log (fase 0). A interface não muda.
+var auditConnectionString = builder.Configuration.GetConnectionString("Postgres");
+if (!string.IsNullOrEmpty(auditConnectionString))
+{
+    builder.Services.AddSingleton(new AdminAuditStore(auditConnectionString));
+    builder.Services.AddSingleton<IAdminAuditTrail, PostgresAdminAuditTrail>();
+    builder.Services.AddHostedService<AdminAuditOutboxRelay>();
+}
+else
+{
+    builder.Services.AddSingleton<IAdminAuditTrail, LoggingAdminAuditTrail>();
+}
 builder.Services.AddSingleton<TokenIssuer>();
 if (keycloakClient is not null)
     builder.Services.AddSingleton(keycloakClient);

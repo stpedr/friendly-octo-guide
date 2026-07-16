@@ -1,0 +1,45 @@
+# Segunda instância do Data.Archiver, dedicada à trilha de auditoria administrativa.
+# Mesma imagem do archiver de telemetria, config distinta: consome auditoria.admin.v1
+# e grava num bucket próprio (linha-audit) com Object Lock (WORM) de retenção longa.
+# Assim a trilha herda imutabilidade e retenção de anos, separada do lake de
+# telemetria e do log de acesso operacional (retenção curta no Loki).
+# Ver docs/governanca/seguranca-runtime-siem.md.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: data-archiver-audit
+  namespace: linha
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: data-archiver-audit }
+  template:
+    metadata:
+      labels: { app: data-archiver-audit }
+    spec:
+      containers:
+        - name: data-archiver-audit
+          image: harbor.interno/plataforma/data-archiver:latest
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.observabilidade:4317
+            - name: Kafka__Bootstrap
+              value: kafka.transporte:9092
+            # Tópico e bucket próprios — nada compartilhado com o lake de telemetria.
+            - name: Kafka__TelemetryTopic
+              value: auditoria.admin.v1
+            - name: S3__Bucket
+              value: linha-audit
+            # WORM longo: ~7 anos de imutabilidade (Object Lock em modo Compliance).
+            # Exige o bucket linha-audit criado com Object Lock habilitado.
+            - name: Archiver__WormRetentionDays
+              value: "2555"
+            # Linhagem: identifica a origem como o Identity, não a telemetria.
+            - name: Lineage__SchemaVersion
+              value: auditoria-admin.v1
+            - name: Lineage__SourceProducer
+              value: identity
+            # S3__Endpoint e credenciais AWS_* vêm do OpenBao via External Secrets.
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { memory: 256Mi }

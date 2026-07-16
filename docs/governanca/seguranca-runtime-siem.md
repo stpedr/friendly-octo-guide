@@ -86,14 +86,21 @@ edge, decision-engine) constrói o mesmo evento pelo mesmo caminho, com a mesma
 token nunca entram na trilha, nem no before nem no after. A trilha prova *que*
 uma permissão mudou; jamais expõe o valor sensível.
 
-**Emissão (hoje)**: o Identity emite em toda mudança de permissão
+**Emissão**: o Identity emite em toda mudança de permissão
 (`POST /v1/admin/users/{username}/permissions` → `IAdminAuditTrail`). O ator vem
 sempre do token validado, nunca do corpo — auditar com ator forjável não audita
-nada. Fase 0 usa um sink de log estruturado; a interface não muda na fase 1.
+nada. O sink é escolhido por configuração, **sem mudar a interface**:
+- **sem Postgres** (dev local puro): `LoggingAdminAuditTrail` (log estruturado);
+- **com Postgres** (`ConnectionStrings:Postgres`): `PostgresAdminAuditTrail` grava
+  o evento **durável no outbox** (`admin_audit_outbox`) antes de responder, e o
+  `AdminAuditOutboxRelay` drena pro Kafka (`auditoria.admin.v1`) com backoff. Como
+  o store de usuários da prod é externo (Keycloak), não há transação a
+  compartilhar — durável-antes-do-ack é o equivalente correto à "mesma transação"
+  do outbox do Core.Execution.
 
-**Retenção WORM (distinta do log de acesso)**: a fase 1 troca o sink por outbox
-(na mesma transação da ação) → tópico `auditoria.admin.v1` → uma **segunda
-instância do `Data.Archiver`** apontada pra um bucket próprio:
+**Retenção WORM (distinta do log de acesso)**: o tópico `auditoria.admin.v1` é
+consumido por uma **segunda instância do `Data.Archiver`**
+(`deploy/data-archiver-audit/`) apontada pra um bucket próprio:
 
 ```
 # data-archiver-audit — mesma imagem, config distinta:
@@ -118,10 +125,11 @@ longa **sem** herdar a retenção curta do Loki.
 
 ## O que falta
 
-- **Trilha administrativa — fase 1**: o sink de outbox (Postgres → tópico →
-  `data-archiver-audit` → WORM) que substitui o sink de log da fase 0; depende
-  do Identity ganhar seu store Postgres. E cobrir os outros emissores além da
-  mudança de permissão (revogação de certificado no edge, override no
-  Decision Engine) com o mesmo `Platform.Audit`.
+- **Outros emissores**: hoje só a mudança de permissão do Identity emite trilha.
+  Falta instrumentar a **revogação de certificado no edge**
+  (`AdminAction.DeviceCertRevoked`) e o **override no Decision Engine**
+  (`AdminAction.DecisionOverride`) com o mesmo `Platform.Audit`.
+- **Bucket `linha-audit` com Object Lock**: o `data-archiver-audit` exige o bucket
+  criado com Object Lock habilitado (provisionamento de infra, não de app).
 - Plano escrito de resposta a incidente de segurança (quem é acionado, como se
   contém, comunicação) — o análogo de segurança do runbook operacional.

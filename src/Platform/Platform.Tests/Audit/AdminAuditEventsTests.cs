@@ -24,7 +24,7 @@ public class AdminAuditEventsTests
 
         Assert.Equal(FixedId, evt.EventId);
         Assert.Equal("msuchoa", evt.Actor);
-        Assert.Equal(new[] { "admin" }, evt.ActorRoles);
+        Assert.Equal("admin", Assert.Single(evt.ActorRoles));
         Assert.Equal(AdminAction.PermissionChanged, evt.Action);
         Assert.Equal(AuditTargetType.User, evt.TargetType);
         Assert.Equal("operador", evt.TargetId);

@@ -17,6 +17,7 @@ module.exports = {
         'governanca/carga-operacional',
         'governanca/seguranca-runtime-siem',
         'governanca/sincronizacao-tempo-ot',
+        'governanca/motor-query-lake',
       ],
     },
   ],

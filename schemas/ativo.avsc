@@ -1,0 +1,16 @@
+{
+  "type": "record",
+  "name": "Ativo",
+  "namespace": "linha.ativos.v1",
+  "doc": "Nó da hierarquia de ativos (ISA-95). Master data, não telemetria: muda por cadastro/manutenção, não por leitura. Cada nó referencia o pai por id — a árvore é reconstruída do encadeamento. Encoding JSON na fase 0. Compatibilidade BACKWARD obrigatória — campo novo sempre com default.",
+  "fields": [
+    { "name": "ativo_id", "type": "string", "doc": "Identificador estável e legível: enterprise.site.area.linha.celula.unidade — mesmo formato usado como prefixo de sensor_id." },
+    { "name": "pai_id", "type": ["null", "string"], "default": null, "doc": "ativo_id do nó pai; null só na raiz (Enterprise)." },
+    { "name": "nivel", "type": { "type": "enum", "name": "NivelIsa95", "symbols": ["Enterprise", "Site", "Area", "Line", "WorkCell", "WorkUnit"] }, "doc": "Nível ISA-95 do nó. Sensor/PLC não é nível: é um WorkUnit ou se pendura via sensor_id que carrega o prefixo do ativo." },
+    { "name": "nome", "type": "string", "doc": "Rótulo humano (ex.: 'Linha de Envase 2')." },
+    { "name": "planta", "type": "string", "doc": "Atributo ABAC de planta — casa com attr:planta do JWT. Redundante com a árvore de propósito: é o campo que RBAC/ABAC filtra sem percorrer a hierarquia." },
+    { "name": "linha", "type": ["null", "string"], "default": null, "doc": "Atributo ABAC de linha quando aplicável (attr:linha do JWT)." },
+    { "name": "status", "type": { "type": "enum", "name": "StatusAtivo", "symbols": ["Ativo", "Manutencao", "Desativado"] }, "default": "Ativo" },
+    { "name": "atualizado_em", "type": { "type": "long", "logicalType": "timestamp-millis" } }
+  ]
+}

@@ -1,0 +1,62 @@
+# Regras Falco específicas da plataforma-linha — vão ALÉM do ruleset default.
+# Cada regra codifica uma invariante da arquitetura: se ela dispara, algo está
+# agindo fora do contrato desenhado. Saída correlacionada no funil "seguranca",
+# separado da observabilidade operacional (ver docs/governanca/seguranca-runtime-siem.md).
+
+- macro: pod_de_servico
+  condition: (k8s.ns.name in (acesso, nucleo, linha, ia))
+
+- macro: pod_voltado_ao_ot
+  condition: (k8s.pod.name startswith "edge-protocol-gateway")
+
+# 1. Os serviços .NET nunca precisam de shell interativo. Um shell num pod de
+#    serviço é sinal de intrusão ou de debug manual em produção — ambos alertam.
+- rule: Shell dentro de pod de servico
+  desc: Processo de shell iniciado num pod de serviço .NET, que nunca precisa disso.
+  condition: >
+    spawned_process and container and pod_de_servico
+    and proc.name in (sh, bash, ash, dash, zsh, busybox)
+  output: >
+    Shell aberto em pod de servico (pod=%k8s.pod.name ns=%k8s.ns.name
+    proc=%proc.cmdline user=%user.name parent=%proc.pname)
+  priority: WARNING
+  tags: [plataforma, shell, k8s]
+
+# 2. Fluxo default é OT->IT (modelo Purdue). Conexao de SAIDA a partir do
+#    gateway de borda é o que o isolamento existe pra impedir.
+- rule: Saida de rede inesperada do edge OT
+  desc: Conexão de saída a partir de um pod voltado ao OT, contra o fluxo unidirecional.
+  condition: >
+    outbound and container and pod_voltado_ao_ot
+    and not fd.sport in (9092)
+  output: >
+    Saida de rede do edge OT (pod=%k8s.pod.name conn=%fd.name
+    proc=%proc.cmdline)
+  priority: CRITICAL
+  tags: [plataforma, network, ot, purdue]
+
+# 3. Imagem é imutavel. Escrita em binario/lib do container = adulteracao.
+- rule: Escrita em binario de container
+  desc: Escrita em diretório de binário/lib dentro de um container de serviço.
+  condition: >
+    open_write and container and pod_de_servico
+    and fd.name pmatch (/usr/bin, /usr/sbin, /usr/lib, /lib, /bin)
+  output: >
+    Escrita em caminho de binario (pod=%k8s.pod.name file=%fd.name
+    proc=%proc.cmdline)
+  priority: CRITICAL
+  tags: [plataforma, tamper]
+
+# 4. Segredos vem do OpenBao pra memoria do processo dono. Acesso ao mount por
+#    outro processo que nao o servico e' suspeito.
+- rule: Leitura de segredo por processo inesperado
+  desc: Processo que não é o serviço lendo o mount de segredos do OpenBao/ESO.
+  condition: >
+    open_read and container and pod_de_servico
+    and fd.name startswith /var/run/secrets/platform
+    and not proc.name in (dotnet)
+  output: >
+    Leitura de segredo por processo inesperado (pod=%k8s.pod.name
+    file=%fd.name proc=%proc.cmdline)
+  priority: CRITICAL
+  tags: [plataforma, secrets]

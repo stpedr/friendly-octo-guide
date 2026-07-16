@@ -1,0 +1,15 @@
+{
+  "type": "record",
+  "name": "ParadaLinha",
+  "namespace": "linha.oee.v1",
+  "doc": "Evento de parada de um ativo produtivo, com motivo classificado. É a entrada que falta pro OEE: sem motivo de parada, não há Disponibilidade nem análise das seis grandes perdas. Aberto quando a linha para; fechado (duracao_ms preenchido) quando volta. Encoding JSON na fase 0. Compatibilidade BACKWARD obrigatória.",
+  "fields": [
+    { "name": "parada_id", "type": { "type": "string", "logicalType": "uuid" } },
+    { "name": "ativo_id", "type": "string", "doc": "Nó da árvore de ativos que parou (ver schemas/ativo.avsc)." },
+    { "name": "iniciada_em", "type": { "type": "long", "logicalType": "timestamp-millis" } },
+    { "name": "duracao_ms", "type": ["null", "long"], "default": null, "doc": "null enquanto a parada está aberta; preenchido no fechamento." },
+    { "name": "categoria", "type": { "type": "enum", "name": "CategoriaParada", "symbols": ["Planejada", "Falha", "Setup", "PequenaParada", "FaltaMaterial", "FaltaOperador", "Qualidade"] }, "doc": "Alinhada às seis grandes perdas do OEE; Planejada não conta contra Disponibilidade." },
+    { "name": "motivo_codigo", "type": "string", "doc": "Código de motivo do catálogo da planta (ex.: 'ENCH-JAM-02'). É o que dá acionabilidade ao Pareto de paradas." },
+    { "name": "origem", "type": { "type": "enum", "name": "OrigemParada", "symbols": ["Automatica", "Operador", "Predictive"] }, "default": "Automatica", "doc": "Automatica = detectada por telemetria; Operador = apontada na tela; Predictive = parada evitada/induzida pela camada 5." }
+  ]
+}

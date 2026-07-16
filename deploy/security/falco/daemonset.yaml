@@ -1,0 +1,64 @@
+# Falco como DaemonSet (fase 2, K8s): um sensor de runtime por nó, via eBPF.
+# As regras específicas da plataforma vêm de rules-plataforma.yaml (ConfigMap).
+# O output vai pro OTel Collector no pipeline "seguranca" — funil separado da
+# observabilidade operacional (ver docs/governanca/seguranca-runtime-siem.md).
+#
+# Namespace: seguranca (adicionar em deploy/namespaces.yaml na fase 2).
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: falco
+  namespace: seguranca
+  labels: { app: falco, dominio: seguranca }
+spec:
+  selector:
+    matchLabels: { app: falco }
+  template:
+    metadata:
+      labels: { app: falco }
+    spec:
+      serviceAccountName: falco
+      hostNetwork: true
+      hostPID: true
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
+      containers:
+        - name: falco
+          image: falcosecurity/falco:0.39.0
+          securityContext:
+            privileged: true
+          args:
+            - /usr/bin/falco
+            - --modern-bpf
+            - -r
+            - /etc/falco/falco_rules.yaml
+            - -r
+            - /etc/falco/rules.d/rules-plataforma.yaml
+          resources:
+            requests: { cpu: 100m, memory: 512Mi }
+            limits: { memory: 1Gi }
+          volumeMounts:
+            - name: regras-plataforma
+              mountPath: /etc/falco/rules.d
+            - name: proc
+              mountPath: /host/proc
+              readOnly: true
+      volumes:
+        - name: regras-plataforma
+          configMap: { name: falco-rules-plataforma }
+        - name: proc
+          hostPath: { path: /proc }
+---
+# As regras da plataforma como ConfigMap. Fonte: rules-plataforma.yaml deste dir.
+# (No fluxo GitOps, um kustomize configMapGenerator gera isto a partir do arquivo.)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: falco-rules-plataforma
+  namespace: seguranca
+data:
+  rules-plataforma.yaml: |
+    # placeholder — o conteúdo real é rules-plataforma.yaml deste diretório,
+    # injetado pelo configMapGenerator do kustomize/GitOps. Mantido fora daqui
+    # pra não duplicar a fonte de verdade das regras.

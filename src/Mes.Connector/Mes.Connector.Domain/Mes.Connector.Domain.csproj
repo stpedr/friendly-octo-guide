@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Regra pura do conector MES: normalização e cursor de polling. NUNCA referenciar
+       infra (Kafka, HTTP, SQL) — o adapter real entra pela porta IMesAdapter no Worker. -->
+</Project>

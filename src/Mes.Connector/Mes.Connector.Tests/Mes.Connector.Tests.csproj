@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <!-- A barra de 80% mede o domínio do conector. Platform.Contracts (codec) é
+         exercido aqui mas contabilizado no serviço dono do outro codec. -->
+    <Exclude>[Platform.*]*</Exclude>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Mes.Connector.Domain/Mes.Connector.Domain.csproj" />
+    <ProjectReference Include="../../Platform/Platform.Contracts/Platform.Contracts.csproj" />
+  </ItemGroup>
+</Project>

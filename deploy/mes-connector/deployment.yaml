@@ -1,0 +1,33 @@
+# Conector MES (nível Purdue 3/4) — poll do MES → normaliza → Kafka mes.eventos.v1.
+# Caminho próprio, paralelo ao edge do chão de fábrica. Réplica única: o cursor de
+# polling é por-instância (idempotência); escalar exigiria particionar por ativo/linha.
+# Ver docs/plano-execucao-propostas-smt.md (Épico 1).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mes-connector
+  namespace: linha
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: mes-connector }
+  template:
+    metadata:
+      labels: { app: mes-connector }
+    spec:
+      containers:
+        - name: mes-connector
+          image: harbor.interno/plataforma/mes-connector:latest
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.observabilidade:4317
+            - name: Kafka__Bootstrap
+              value: kafka.transporte:9092
+            # Origem e conexão do MES real via config/OpenBao; sem isso, roda o simulador.
+            - name: Mes__SourceSystem
+              value: simulador
+            - name: Mes__PollIntervalSeconds
+              value: "5"
+          resources:
+            requests: { cpu: 50m, memory: 96Mi }
+            limits: { memory: 192Mi }

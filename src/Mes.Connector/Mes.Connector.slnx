@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Mes.Connector.Domain/Mes.Connector.Domain.csproj" />
+  <Project Path="Mes.Connector.Tests/Mes.Connector.Tests.csproj" />
+  <Project Path="Mes.Connector.Worker/Mes.Connector.Worker.csproj" />
+</Solution>

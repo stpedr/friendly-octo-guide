@@ -38,6 +38,11 @@
     <Project Path="src/Telemetry.Ingest/Telemetry.Ingest.Tests/Telemetry.Ingest.Tests.csproj" />
     <Project Path="src/Telemetry.Ingest/Telemetry.Ingest.Worker/Telemetry.Ingest.Worker.csproj" />
   </Folder>
+  <Folder Name="/src/Mes.Connector/">
+    <Project Path="src/Mes.Connector/Mes.Connector.Domain/Mes.Connector.Domain.csproj" />
+    <Project Path="src/Mes.Connector/Mes.Connector.Tests/Mes.Connector.Tests.csproj" />
+    <Project Path="src/Mes.Connector/Mes.Connector.Worker/Mes.Connector.Worker.csproj" />
+  </Folder>
   <Folder Name="/src/Ai/">
     <Project Path="src/Ai/Ai.Domain/Ai.Domain.csproj" />
     <Project Path="src/Ai/Ai.Router.Worker/Ai.Router.Worker.csproj" />

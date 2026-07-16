@@ -1,0 +1,18 @@
+{
+  "type": "record",
+  "name": "MesEvento",
+  "namespace": "linha.mes.v1",
+  "doc": "Evento MES genérico (nível Purdue 3/4) — ordem, apontamento, defeito, parada, setup. Neutro a fornecedor: o conector normaliza qualquer MES pra este formato. Carrega ativo_id (liga na árvore ISA-95) e a origem (linhagem). Encoding JSON na fase 0. Compatibilidade BACKWARD obrigatória — campo novo sempre com default.",
+  "fields": [
+    { "name": "event_id", "type": { "type": "string", "logicalType": "uuid" } },
+    { "name": "ativo_id", "type": "string", "doc": "Nó da árvore de ativos ISA-95 a que o evento pertence." },
+    { "name": "tipo", "type": { "type": "enum", "name": "TipoMesEvento", "symbols": ["OrdemAberta", "OrdemFechada", "Apontamento", "Defeito", "Parada", "Setup"] } },
+    { "name": "codigo", "type": "string", "doc": "Código dentro do tipo: id da ordem, código de defeito, motivo de parada." },
+    { "name": "quantidade", "type": ["null", "double"], "default": null, "doc": "Payload numérico quando aplica (quantidade produzida, refugo)." },
+    { "name": "texto", "type": ["null", "string"], "default": null, "doc": "Texto livre opcional (observação do apontamento)." },
+    { "name": "turno", "type": ["null", "string"], "default": null, "doc": "Turno — atributo ABAC attr:turno." },
+    { "name": "sistema_origem", "type": "string", "doc": "Qual MES/adapter produziu o evento (linhagem)." },
+    { "name": "occurred_at", "type": { "type": "long", "logicalType": "timestamp-millis" } },
+    { "name": "clock_source", "type": "int", "default": 0, "doc": "Confiança do relógio de origem: 0=Unknown,1=Ntp,2=Ptp,3=Unsynced (mesma semântica de sensor-reading)." }
+  ]
+}

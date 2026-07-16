@@ -30,4 +30,4 @@ jobs:
             /p:Threshold=80 \
             /p:ThresholdType=line \
             /p:ThresholdStat=total \
-            /p:Include='[Platform.ServiceDefaults]Platform.ServiceDefaults.Security.*,[Platform.Audit]*'
+            /p:Include='[Platform.ServiceDefaults]Platform.ServiceDefaults.Security.*%2c[Platform.Audit]*'

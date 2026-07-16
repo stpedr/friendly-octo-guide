@@ -20,9 +20,9 @@ jobs:
       - name: Build (warnings = erros, via Directory.Build.props)
         run: dotnet build src/Platform/Platform.Tests --configuration Release
       - name: Testes com cobertura mínima (só o código testável de plataforma)
-        # A barra mede o que TEM teste de unidade (Security: masking, pgcrypto).
-        # O glue de host (PlatformDefaults/Instrumentation/Secrets) é exercido
-        # pelos serviços, não aqui.
+        # A barra mede o que TEM teste de unidade (Security: masking, pgcrypto;
+        # Audit: redação e diff de permissão). O glue de host
+        # (PlatformDefaults/Instrumentation/Secrets) é exercido pelos serviços, não aqui.
         run: |
           dotnet test src/Platform/Platform.Tests --configuration Release --no-build \
             /p:CollectCoverage=true \
@@ -30,4 +30,4 @@ jobs:
             /p:Threshold=80 \
             /p:ThresholdType=line \
             /p:ThresholdStat=total \
-            /p:Include='[Platform.ServiceDefaults]Platform.ServiceDefaults.Security.*'
+            /p:Include='[Platform.ServiceDefaults]Platform.ServiceDefaults.Security.*,[Platform.Audit]*'

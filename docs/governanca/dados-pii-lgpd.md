@@ -15,6 +15,7 @@ coleta não vaza, não expira e não gera pedido de titular.
 | Telemetria de sensor (valor, timestamp, sensor-id) | Kafka, Postgres, lake (MinIO) | Não pessoal | — | Indefinida (lake) / 13 meses (Postgres quente) |
 | Ordens de produção | Core.Execution (Postgres) | Não pessoal (sem operador nominal) | — | 5 anos (rastreabilidade industrial) |
 | Beacon de RUM (rota, status, duração) | VictoriaMetrics | Não pessoal (sem id de usuário — decisão de projeto) | — | 13 meses |
+| Trilha de auditoria administrativa (ator, ação, alvo, before/after redigido) | Lake WORM (`auditoria.admin.v1`) | **PII — registro de acesso privilegiado** | Obrigação legal / segurança (art. 7º II) | Longa (~7 anos, imutável) |
 
 Decisões de projeto que sustentam a tabela:
 
@@ -25,6 +26,12 @@ Decisões de projeto que sustentam a tabela:
 - O lake (`Data.Archiver`) só recebe o tópico de telemetria — PII não passa
   por lá por construção. Se um dia passar, entra particionada e criptografada
   por chave própria pra permitir esquecimento seletivo.
+- A trilha de auditoria administrativa guarda **quem mudou permissão de quem**,
+  mas com before/after **redigido** (`Platform.Audit` — senha, seed TOTP e
+  segredo nunca entram). É a exceção deliberada à retenção curta: registro de
+  acesso privilegiado é obrigação de segurança, por isso vai pro WORM com
+  retenção longa, não pro Loki de 6 meses. O direito ao esquecimento cede à
+  obrigação legal aqui — a trilha é justamente o que não se apaga.
 
 ## Direitos do titular
 

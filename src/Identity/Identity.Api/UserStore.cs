@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using Identity.Domain.Totp;
+using Platform.Audit;
 
 namespace Identity.Api;
 
@@ -20,11 +21,30 @@ public interface IUserStore
     UserAccount? Find(string username);
 }
 
+/// <summary>O antes/depois de uma mudança de permissão — o que a trilha de auditoria registra.</summary>
+public sealed record PermissionChange(PermissionSnapshot Before, PermissionSnapshot After);
+
+/// <summary>
+/// Operações administrativas sobre usuários — separadas do IUserStore (caminho de
+/// login, só leitura) de propósito: mutar permissão é uma capacidade distinta,
+/// auditada, que o caminho de autenticação não deve alcançar.
+/// </summary>
+public interface IUserAdmin
+{
+    /// <summary>
+    /// Aplica novos papéis/atributos e devolve o antes/depois; null se o usuário
+    /// não existe. Sempre devolve o par mesmo quando nada muda — quem decide não
+    /// auditar não-mudança é o chamador (via <see cref="PermissionSnapshot.SamePermissions"/>).
+    /// </summary>
+    PermissionChange? ApplyPermissionChange(
+        string username, IReadOnlyCollection<string> roles, IReadOnlyDictionary<string, string> attributes);
+}
+
 /// <summary>
 /// Fase 0: usuários em memória, seed fixa pra dev poder logar com um authenticator real.
 /// Fase 1 troca por Postgres — a interface não muda.
 /// </summary>
-public sealed class InMemoryUserStore : IUserStore
+public sealed class InMemoryUserStore : IUserStore, IUserAdmin
 {
     private readonly ConcurrentDictionary<string, UserAccount> _users = new(StringComparer.OrdinalIgnoreCase);
 
@@ -35,6 +55,35 @@ public sealed class InMemoryUserStore : IUserStore
     }
 
     public UserAccount? Find(string username) => _users.GetValueOrDefault(username);
+
+    public PermissionChange? ApplyPermissionChange(
+        string username, IReadOnlyCollection<string> roles, IReadOnlyDictionary<string, string> attributes)
+    {
+        ArgumentNullException.ThrowIfNull(roles);
+        ArgumentNullException.ThrowIfNull(attributes);
+
+        if (!_users.TryGetValue(username, out var current))
+            return null;
+
+        var before = SnapshotOf(current);
+        var updated = new UserAccount
+        {
+            Username = current.Username,
+            PasswordSalt = current.PasswordSalt,
+            PasswordHash = current.PasswordHash,
+            TotpSeed = current.TotpSeed,
+            Roles = [.. roles],
+            Attributes = new Dictionary<string, string>(attributes),
+            LastAcceptedTotpStep = current.LastAcceptedTotpStep,
+        };
+        _users[current.Username] = updated;
+
+        return new PermissionChange(before, SnapshotOf(updated));
+    }
+
+    private static PermissionSnapshot SnapshotOf(UserAccount account) =>
+        new(account.Roles.ToHashSet(StringComparer.Ordinal),
+            new Dictionary<string, string>(account.Attributes, StringComparer.Ordinal));
 
     private void Seed(string username, string password, string[] roles, Dictionary<string, string> attributes)
     {

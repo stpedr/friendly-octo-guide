@@ -1,0 +1,18 @@
+{
+  "type": "record",
+  "name": "AdminAuditEvent",
+  "namespace": "auditoria.admin.v1",
+  "doc": "TODA ação administrativa sensível (mudança de permissão/atributo, revogação de certificado de dispositivo, override de decisão) — append-only e imutável, retenção longa no Big Data Pool (WORM), separada do log de acesso operacional. Valores sensíveis (senha, seed TOTP, segredo) NUNCA entram: são redigidos antes de virar evento. Encoding JSON na fase 0. Compatibilidade BACKWARD obrigatória — campo novo sempre com default.",
+  "fields": [
+    { "name": "event_id", "type": { "type": "string", "logicalType": "uuid" } },
+    { "name": "actor", "type": "string", "doc": "Quem executou a ação (sub do JWT). A origem é o token validado, nunca o corpo da requisição." },
+    { "name": "actor_roles", "type": { "type": "array", "items": "string" }, "default": [], "doc": "Papéis do ator no momento da ação — quem tinha o poder de fazer isso." },
+    { "name": "action", "type": "string", "doc": "Ação executada, do vocabulário fechado (ex.: PermissionChanged, DeviceCertRevoked, DecisionOverride)." },
+    { "name": "target_type", "type": "string", "doc": "Tipo do alvo: User | Device | Decision." },
+    { "name": "target_id", "type": "string", "doc": "Identificador do alvo da ação." },
+    { "name": "before", "type": ["null", "string"], "default": null, "doc": "Estado anterior, JÁ redigido; null quando não se aplica (criação)." },
+    { "name": "after", "type": ["null", "string"], "default": null, "doc": "Estado posterior, JÁ redigido; null quando não se aplica (remoção)." },
+    { "name": "trace_id", "type": ["null", "string"], "default": null, "doc": "Correlação com a espinha de observabilidade (W3C traceparent)." },
+    { "name": "occurred_at", "type": { "type": "long", "logicalType": "timestamp-millis" } }
+  ]
+}

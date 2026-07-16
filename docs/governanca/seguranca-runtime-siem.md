@@ -45,9 +45,9 @@ Por isso: **mesmo OTel Collector como coletor, pipeline e destino distintos.**
   Regras específicas desta plataforma, não só as default — ver o arquivo de
   regras. Roda como **DaemonSet** na fase 2 (K8s); na fase 1 (compose no Pi) roda
   como serviço host, com o subconjunto de regras que faz sentido fora de K8s.
-- **Fontes correlacionadas**: além do Falco, entram a **trilha de auditoria
-  administrativa** (quando existir — hoje é um gap rastreado em issue), as
-  decisões auditadas do
+- **Fontes correlacionadas**: além do Falco, entra a **trilha de auditoria
+  administrativa** (`schemas/auditoria-admin.avsc` + `Platform.Audit` — ver a
+  seção abaixo), as decisões auditadas do
   `Decision.Engine` (`schemas/decisao-auditada.avsc`) e as negações de admission
   do cosign.
 - **Destino**: bucket **WORM** no MinIO (o mesmo mecanismo de imutabilidade do
@@ -70,6 +70,42 @@ O `deploy/security/falco/rules-plataforma.yaml` cobre o que é específico daqui
 - **Leitura de arquivo de segredo fora do processo dono** — os segredos vêm do
   OpenBao pra memória do serviço; acesso ao mount por outro processo é suspeito.
 
+## Trilha de auditoria administrativa
+
+Ações administrativas sensíveis (mudança de permissão/atributo, revogação de
+certificado de dispositivo, override de decisão) precisam de uma trilha
+**append-only e imutável**, separada do log de acesso operacional — que tem
+retenção curta (6 meses, LGPD/Marco Civil) e não é forense.
+
+**Contrato**: `schemas/auditoria-admin.avsc` (`auditoria.admin.v1`) — ator,
+papéis do ator, ação, alvo, before/after **já redigidos**, trace-id, timestamp.
+
+**Núcleo reusável**: `src/Platform/Platform.Audit/` — todo emissor (Identity,
+edge, decision-engine) constrói o mesmo evento pelo mesmo caminho, com a mesma
+**redação por nome de campo** (`AuditRedaction`): senha, seed TOTP, segredo e
+token nunca entram na trilha, nem no before nem no after. A trilha prova *que*
+uma permissão mudou; jamais expõe o valor sensível.
+
+**Emissão (hoje)**: o Identity emite em toda mudança de permissão
+(`POST /v1/admin/users/{username}/permissions` → `IAdminAuditTrail`). O ator vem
+sempre do token validado, nunca do corpo — auditar com ator forjável não audita
+nada. Fase 0 usa um sink de log estruturado; a interface não muda na fase 1.
+
+**Retenção WORM (distinta do log de acesso)**: a fase 1 troca o sink por outbox
+(na mesma transação da ação) → tópico `auditoria.admin.v1` → uma **segunda
+instância do `Data.Archiver`** apontada pra um bucket próprio:
+
+```
+# data-archiver-audit — mesma imagem, config distinta:
+Kafka__TelemetryTopic: auditoria.admin.v1
+S3__Bucket:            linha-audit          # bucket separado do lake de telemetria
+Archiver__WormRetentionDays: "2555"         # ~7 anos, Object Lock em modo Compliance
+```
+
+O `S3ObjectStore` já aplica `ObjectLockMode.Compliance` quando a retenção é > 0 —
+nem o admin apaga antes da data. Assim a trilha herda imutabilidade e retenção
+longa **sem** herdar a retenção curta do Loki.
+
 ## Fases
 
 - **Fase 1 (Pi + compose)**: Falco host-level com o subconjunto de regras
@@ -82,8 +118,10 @@ O `deploy/security/falco/rules-plataforma.yaml` cobre o que é específico daqui
 
 ## O que falta
 
-- A **trilha de auditoria administrativa** como fonte formal (gap rastreado —
-  issue própria); hoje ações de admin ficam só no log de acesso de retenção
-  curta.
+- **Trilha administrativa — fase 1**: o sink de outbox (Postgres → tópico →
+  `data-archiver-audit` → WORM) que substitui o sink de log da fase 0; depende
+  do Identity ganhar seu store Postgres. E cobrir os outros emissores além da
+  mudança de permissão (revogação de certificado no edge, override no
+  Decision Engine) com o mesmo `Platform.Audit`.
 - Plano escrito de resposta a incidente de segurança (quem é acionado, como se
   contém, comunicação) — o análogo de segurança do runbook operacional.

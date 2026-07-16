@@ -4,6 +4,7 @@
     <Project Path="src/Platform/Platform.ServiceDefaults/Platform.ServiceDefaults.csproj" />
     <Project Path="src/Platform/Platform.AccessControl/Platform.AccessControl.csproj" />
     <Project Path="src/Platform/Platform.Contracts/Platform.Contracts.csproj" />
+    <Project Path="src/Platform/Platform.Audit/Platform.Audit.csproj" />
     <Project Path="src/Platform/Platform.Tests/Platform.Tests.csproj" />
   </Folder>
   <Folder Name="/src/Gateway/">

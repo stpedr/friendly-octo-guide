@@ -1,4 +1,5 @@
 using Identity.Api;
+using Platform.Audit;
 using Platform.ServiceDefaults;
 
 var instrumentation = new ServiceInstrumentation("identity");
@@ -27,7 +28,12 @@ if (!string.IsNullOrEmpty(keycloakBaseUrl))
 }
 
 builder.Services.AddSingleton(instrumentation);
-builder.Services.AddSingleton<IUserStore, InMemoryUserStore>(); // sem Keycloak (dev local): usuários seguem em memória
+// Uma instância do store atende leitura (IUserStore) e admin (IUserAdmin) — sem
+// Keycloak (dev local), os usuários seguem em memória.
+builder.Services.AddSingleton<InMemoryUserStore>();
+builder.Services.AddSingleton<IUserStore>(sp => sp.GetRequiredService<InMemoryUserStore>());
+builder.Services.AddSingleton<IUserAdmin>(sp => sp.GetRequiredService<InMemoryUserStore>());
+builder.Services.AddSingleton<IAdminAuditTrail, LoggingAdminAuditTrail>(); // fase 0: log; fase 1: outbox → WORM
 builder.Services.AddSingleton<TokenIssuer>();
 if (keycloakClient is not null)
     builder.Services.AddSingleton(keycloakClient);
@@ -40,5 +46,6 @@ var app = builder.Build();
 
 app.MapGet("/healthz", () => Results.Ok(new { status = "ok" }));
 app.MapAuthEndpoints();
+app.MapAdminEndpoints();
 
 app.Run();

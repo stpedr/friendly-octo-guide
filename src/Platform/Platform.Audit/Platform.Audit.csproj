@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Trilha de auditoria administrativa: o núcleo puro que TODO emissor reusa
+       (Identity, edge, decision-engine) pra construir o MESMO evento append-only
+       com os MESMOS valores redigidos. Espelho em C# de schemas/auditoria-admin.avsc.
+       Puro como um Domain: só BCL, nada de infra — quem grava é o host. -->
+</Project>

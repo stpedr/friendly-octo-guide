@@ -21,7 +21,9 @@ public class ContractToDomainTests
     private static SensorReading DecodeAsDomain(byte[] wire, DateTimeOffset receivedAt)
     {
         var record = SensorReadingCodec.Decode(wire);
-        return new SensorReading(record.SensorId, record.Value, record.MeasuredAt, receivedAt);
+        return new SensorReading(
+            record.SensorId, record.Value, record.MeasuredAt, receivedAt,
+            ClockSourceMap.FromWire(record.ClockSource));
     }
 
     [Fact]
@@ -52,5 +54,16 @@ public class ContractToDomainTests
         var reading = DecodeAsDomain(wire, receivedAt: Now);
 
         Assert.True(Gate.Evaluate(reading).Accepted); // 9 min < 10 min de staleness máxima
+    }
+
+    [Fact]
+    public void Fonte_de_relogio_sobrevive_ao_roundtrip_avro()
+    {
+        var wire = SensorReadingCodec.Encode(
+            new SensorReadingRecord("temp-forno-01", 100, Now, QualityFlag: 0, ClockSource: (int)ClockSource.Ntp));
+
+        var reading = DecodeAsDomain(wire, receivedAt: Now);
+
+        Assert.Equal(ClockSource.Ntp, reading.ClockSource);
     }
 }

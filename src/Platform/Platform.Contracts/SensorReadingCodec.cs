@@ -7,7 +7,8 @@ public sealed record SensorReadingRecord(
     string SensorId,
     double Value,
     DateTimeOffset MeasuredAt,
-    int QualityFlag = 0);
+    int QualityFlag = 0,
+    int ClockSource = 0); // 0=Unknown,1=Ntp,2=Ptp,3=Unsynced — ver schemas/sensor-reading.avsc
 
 /// <summary>
 /// Codec Avro binário (spec 1.11) do registro SensorReading, escrito à mão porque o
@@ -23,7 +24,7 @@ public static class SensorReadingCodec
         ArgumentNullException.ThrowIfNull(reading);
 
         var utf8 = System.Text.Encoding.UTF8.GetBytes(reading.SensorId);
-        var buffer = new byte[10 + utf8.Length + 8 + 10 + 5];
+        var buffer = new byte[10 + utf8.Length + 8 + 10 + 5 + 5];
         var pos = 0;
 
         pos += WriteZigZag(buffer.AsSpan(pos), utf8.Length);
@@ -35,6 +36,7 @@ public static class SensorReadingCodec
 
         pos += WriteZigZag(buffer.AsSpan(pos), reading.MeasuredAt.ToUnixTimeMilliseconds());
         pos += WriteZigZag(buffer.AsSpan(pos), reading.QualityFlag);
+        pos += WriteZigZag(buffer.AsSpan(pos), reading.ClockSource);
 
         return buffer[..pos];
     }
@@ -57,8 +59,12 @@ public static class SensorReadingCodec
         var measuredAtMillis = ReadZigZag(payload, ref pos);
         var qualityFlag = checked((int)ReadZigZag(payload, ref pos));
 
+        // clock_source é BACKWARD: payload antigo (sem o campo) assume 0 (Unknown).
+        // Só lê se ainda há bytes — o codec novo lê o que o codec antigo não escreveu.
+        var clockSource = pos < payload.Length ? checked((int)ReadZigZag(payload, ref pos)) : 0;
+
         return new SensorReadingRecord(
-            sensorId, value, DateTimeOffset.FromUnixTimeMilliseconds(measuredAtMillis), qualityFlag);
+            sensorId, value, DateTimeOffset.FromUnixTimeMilliseconds(measuredAtMillis), qualityFlag, clockSource);
     }
 
     private static int WriteZigZag(Span<byte> target, long value)

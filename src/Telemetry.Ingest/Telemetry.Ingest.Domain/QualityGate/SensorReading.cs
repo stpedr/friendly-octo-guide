@@ -5,4 +5,5 @@ public sealed record SensorReading(
     string SensorId,
     double Value,
     DateTimeOffset MeasuredAt,
-    DateTimeOffset ReceivedAt);
+    DateTimeOffset ReceivedAt,
+    ClockSource ClockSource = ClockSource.Unknown);

@@ -18,11 +18,21 @@ public class QualityGateTests
         maxClockDrift: TimeSpan.FromSeconds(5),
         maxStaleness: TimeSpan.FromMinutes(10));
 
+    private static Gate StrictClockGate() => new(
+        limitsBySensor: new Dictionary<string, SensorLimits>
+        {
+            ["temp-forno-01"] = new(Min: -40, Max: 900),
+        },
+        maxClockDrift: TimeSpan.FromSeconds(5),
+        maxStaleness: TimeSpan.FromMinutes(10),
+        requireSyncedClock: true);
+
     private static SensorReading Reading(
         string sensorId = "temp-forno-01",
         double value = 250,
-        TimeSpan? measuredOffset = null)
-        => new(sensorId, value, Now + (measuredOffset ?? TimeSpan.Zero), Now);
+        TimeSpan? measuredOffset = null,
+        ClockSource clock = ClockSource.Ntp)
+        => new(sensorId, value, Now + (measuredOffset ?? TimeSpan.Zero), Now, clock);
 
     [Fact]
     public void Aceita_leitura_dentro_do_envelope_e_com_relogio_sincronizado()
@@ -97,5 +107,32 @@ public class QualityGateTests
         var verdict = DefaultGate().Evaluate(Reading(measuredOffset: TimeSpan.FromMinutes(-9)));
 
         Assert.True(verdict.Accepted);
+    }
+
+    [Theory]
+    [InlineData(ClockSource.Unsynced)]
+    [InlineData(ClockSource.Unknown)]
+    public void Rejeita_relogio_nao_confiavel_quando_exigido(ClockSource clock)
+    {
+        var verdict = StrictClockGate().Evaluate(Reading(clock: clock));
+
+        Assert.False(verdict.Accepted);
+        Assert.Equal(RejectionReason.UnsyncedClock, verdict.Reason);
+    }
+
+    [Theory]
+    [InlineData(ClockSource.Ntp)]
+    [InlineData(ClockSource.Ptp)]
+    public void Aceita_relogio_sincronizado_quando_exigido(ClockSource clock)
+    {
+        Assert.True(StrictClockGate().Evaluate(Reading(clock: clock)).Accepted);
+    }
+
+    [Fact]
+    public void Sem_exigencia_de_sincronia_relogio_desconhecido_passa()
+    {
+        // O gate padrão (requireSyncedClock=false) não barra por fonte de relógio —
+        // a checagem só liga quando o edge já popula clock_source.
+        Assert.True(DefaultGate().Evaluate(Reading(clock: ClockSource.Unknown)).Accepted);
     }
 }

@@ -4,6 +4,7 @@ public enum RejectionReason
 {
     None,
     OutOfPhysicalRange,   // fora do envelope físico do sensor (ex.: -400°C)
+    UnsyncedClock,        // relógio de origem não confiável (sem NTP/PTP) — timestamp não vale
     ClockDriftExceeded,   // relógio do dispositivo à frente/atrás demais do servidor
     StaleReading,         // medida antiga demais pra valer como "estado atual"
 }

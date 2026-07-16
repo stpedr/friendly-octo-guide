@@ -22,6 +22,30 @@ public class SensorReadingCodecTests
     }
 
     [Fact]
+    public void Roundtrip_preserva_a_fonte_de_relogio()
+    {
+        // clock_source (0=Unknown,1=Ntp,2=Ptp,3=Unsynced) sobrevive ao binário.
+        var original = new SensorReadingRecord(
+            "temp-forno-01", 100, DateTimeOffset.FromUnixTimeMilliseconds(1_700_000_000_123),
+            QualityFlag: 0, ClockSource: 2);
+
+        Assert.Equal(original, SensorReadingCodec.Decode(SensorReadingCodec.Encode(original)));
+    }
+
+    [Fact]
+    public void Payload_antigo_sem_clock_source_decodifica_como_unknown()
+    {
+        // BACKWARD: um payload dos 4 campos originais (sem clock_source) ainda decodifica —
+        // simulamos truncando o último byte (clock_source=0) de um encode novo.
+        var full = SensorReadingCodec.Encode(new SensorReadingRecord("s", 1.0, DateTimeOffset.UnixEpoch));
+        var legacy = full[..^1]; // remove o byte do clock_source (zigzag de 0 = 1 byte)
+
+        var decoded = SensorReadingCodec.Decode(legacy);
+
+        Assert.Equal(0, decoded.ClockSource);
+    }
+
+    [Fact]
     public void Valores_negativos_e_zero_sobrevivem_ao_zigzag()
     {
         var original = new SensorReadingRecord("s", -273.15, DateTimeOffset.UnixEpoch, 0);

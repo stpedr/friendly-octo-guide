@@ -52,7 +52,9 @@ public sealed partial class IngestConsumer(
             try
             {
                 var record = SensorReadingCodec.Decode(result.Message.Value);
-                reading = new SensorReading(record.SensorId, record.Value, record.MeasuredAt, DateTimeOffset.UtcNow);
+                reading = new SensorReading(
+                    record.SensorId, record.Value, record.MeasuredAt, DateTimeOffset.UtcNow,
+                    ClockSourceMap.FromWire(record.ClockSource));
             }
             catch (FormatException)
             {

@@ -16,6 +16,7 @@ module.exports = {
         'governanca/oee-kpi-manufatura',
         'governanca/carga-operacional',
         'governanca/seguranca-runtime-siem',
+        'governanca/sincronizacao-tempo-ot',
       ],
     },
   ],

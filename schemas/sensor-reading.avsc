@@ -7,6 +7,7 @@
     { "name": "sensor_id", "type": "string" },
     { "name": "value", "type": "double" },
     { "name": "measured_at", "type": { "type": "long", "logicalType": "timestamp-millis" } },
-    { "name": "quality_flag", "type": "int", "default": 0, "doc": "0=normal; reservado p/ flags do PLC" }
+    { "name": "quality_flag", "type": "int", "default": 0, "doc": "0=normal; reservado p/ flags do PLC" },
+    { "name": "clock_source", "type": "int", "default": 0, "doc": "Fonte/qualidade do relógio que carimbou a medição: 0=Unknown (não declarado), 1=Ntp, 2=Ptp, 3=Unsynced. O quality gate pode rejeitar leitura de relógio não confiável — timestamp sem sincronização não vale como verdade. Default 0 mantém BACKWARD." }
   ]
 }

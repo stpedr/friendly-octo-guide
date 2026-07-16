@@ -1,0 +1,497 @@
+<title>Plataforma de Linha — Arquitetura & Estado atual</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --ground: #f5f7f8;
+    --surface: #ffffff;
+    --surface-2: #eef2f3;
+    --ink: #12171c;
+    --muted: #566169;
+    --faint: #7c878e;
+    --line: #dbe2e5;
+    --line-strong: #c4ced2;
+    --accent: #0d7280;
+    --accent-ink: #0a5b66;
+    --accent-wash: #e2f0f1;
+    --ok: #2f7d52;
+    --ok-wash: #e3f1e8;
+    --warn: #9a6a13;
+    --warn-wash: #f6ecd7;
+    --plan: #6a757c;
+    --plan-wash: #e9edee;
+    --shadow: 0 1px 2px rgba(18,23,28,.05), 0 8px 24px -16px rgba(18,23,28,.22);
+    --radius: 12px;
+    --maxw: 1080px;
+    --mono: ui-monospace, "SF Mono", "SFMono-Regular", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0d1116;
+      --surface: #151b21;
+      --surface-2: #1c242c;
+      --ink: #e7ecef;
+      --muted: #9aa6ad;
+      --faint: #74808780;
+      --faint: #737f86;
+      --line: #26313a;
+      --line-strong: #35424c;
+      --accent: #3fc3d0;
+      --accent-ink: #6fd6e0;
+      --accent-wash: #123037;
+      --ok: #49bd7e;
+      --ok-wash: #123123;
+      --warn: #d9a53c;
+      --warn-wash: #322715;
+      --plan: #8b969d;
+      --plan-wash: #1e262d;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px -18px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --ground: #f5f7f8; --surface: #ffffff; --surface-2: #eef2f3;
+    --ink: #12171c; --muted: #566169; --faint: #7c878e;
+    --line: #dbe2e5; --line-strong: #c4ced2;
+    --accent: #0d7280; --accent-ink: #0a5b66; --accent-wash: #e2f0f1;
+    --ok: #2f7d52; --ok-wash: #e3f1e8; --warn: #9a6a13; --warn-wash: #f6ecd7;
+    --plan: #6a757c; --plan-wash: #e9edee;
+    --shadow: 0 1px 2px rgba(18,23,28,.05), 0 8px 24px -16px rgba(18,23,28,.22);
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground: #0d1116; --surface: #151b21; --surface-2: #1c242c;
+    --ink: #e7ecef; --muted: #9aa6ad; --faint: #737f86;
+    --line: #26313a; --line-strong: #35424c;
+    --accent: #3fc3d0; --accent-ink: #6fd6e0; --accent-wash: #123037;
+    --ok: #49bd7e; --ok-wash: #123123; --warn: #d9a53c; --warn-wash: #322715;
+    --plan: #8b969d; --plan-wash: #1e262d;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px -18px rgba(0,0,0,.7);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+
+  a { color: var(--accent-ink); }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    margin: 0;
+  }
+
+  /* ---------- header ---------- */
+  header.top {
+    border-bottom: 1px solid var(--line);
+    background:
+      radial-gradient(120% 140% at 88% -10%, var(--accent-wash) 0%, transparent 46%),
+      var(--surface);
+  }
+  .top-inner { padding: 52px 24px 40px; }
+  h1 {
+    font-size: clamp(30px, 5vw, 46px);
+    line-height: 1.04;
+    letter-spacing: -.02em;
+    font-weight: 800;
+    margin: 14px 0 0;
+    text-wrap: balance;
+    max-width: 20ch;
+  }
+  .lede {
+    margin: 16px 0 0;
+    max-width: 64ch;
+    font-size: 17px;
+    color: var(--muted);
+  }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    margin-top: 26px;
+    align-items: center;
+  }
+  .legend .lbl { font-size: 12.5px; color: var(--faint); margin-right: 2px; }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+    font-family: var(--mono);
+    letter-spacing: .01em;
+  }
+  .chip::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: .9; }
+  .chip.ok { color: var(--ok); background: var(--ok-wash); border-color: color-mix(in srgb, var(--ok) 26%, transparent); }
+  .chip.partial { color: var(--warn); background: var(--warn-wash); border-color: color-mix(in srgb, var(--warn) 28%, transparent); }
+  .chip.plan { color: var(--plan); background: var(--plan-wash); border-color: color-mix(in srgb, var(--plan) 26%, transparent); }
+  .chip.ci { color: var(--ok); background: transparent; border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
+  .chip.ci::before { content: "✓"; width: auto; height: auto; border-radius: 0; font-size: 11px; line-height: 1; }
+
+  /* ---------- metrics ---------- */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-top: 30px;
+  }
+  .metric { background: var(--surface); padding: 18px 18px 16px; }
+  .metric .n {
+    font-size: 27px; font-weight: 800; letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .metric .k { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  @media (max-width: 720px) { .metrics { grid-template-columns: repeat(2, 1fr); } }
+
+  /* ---------- sections ---------- */
+  section { padding: 46px 0 8px; }
+  .sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+  h2 {
+    font-size: 21px; font-weight: 750; letter-spacing: -.01em; margin: 8px 0 0;
+  }
+  h2 .num { font-family: var(--mono); color: var(--faint); font-weight: 600; font-size: 15px; margin-right: 10px; }
+  .sec-note { font-size: 13.5px; color: var(--muted); max-width: 46ch; }
+
+  /* ---------- flow grid ---------- */
+  .grid { display: grid; gap: 14px; }
+  .cols-2 { grid-template-columns: repeat(2, 1fr); }
+  .cols-3 { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 860px) { .cols-2, .cols-3 { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 18px 18px 16px;
+    box-shadow: var(--shadow);
+    position: relative;
+  }
+  .card .stripe { position: absolute; inset: 0 auto 0 0; width: 3px; border-radius: var(--radius) 0 0 var(--radius); background: var(--accent); opacity: .55; }
+  .card h3 { margin: 0; font-size: 15.5px; font-weight: 700; letter-spacing: -.005em; display: flex; align-items: center; gap: 9px; }
+  .card h3 .ix { font-family: var(--mono); font-size: 12px; color: var(--faint); font-weight: 600; }
+  .card p { margin: 9px 0 0; font-size: 13.5px; color: var(--muted); }
+  .card .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 12px; }
+  .tag {
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    background: var(--surface-2); border: 1px solid var(--line);
+    padding: 2px 7px; border-radius: 6px; white-space: nowrap;
+  }
+  .tag.hot { color: var(--accent-ink); border-color: color-mix(in srgb, var(--accent) 34%, transparent); background: var(--accent-wash); }
+
+  /* ---------- governance list ---------- */
+  .adrs { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  @media (max-width: 720px) { .adrs { grid-template-columns: 1fr; } }
+  .adr { background: var(--surface); padding: 13px 16px; display: flex; align-items: flex-start; gap: 12px; }
+  .adr .body { min-width: 0; }
+  .adr .t { font-size: 14px; font-weight: 650; }
+  .adr .d { font-size: 12.5px; color: var(--muted); margin-top: 1px; }
+  .adr .file { font-family: var(--mono); font-size: 11px; color: var(--faint); }
+  .adr .chip { flex: none; margin-top: 2px; }
+
+  /* ---------- acatech ---------- */
+  .stages { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+  @media (max-width: 860px) { .stages { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 520px) { .stages { grid-template-columns: repeat(2, 1fr); } }
+  .stage { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 13px 13px 12px; }
+  .stage .s { font-family: var(--mono); font-size: 11px; color: var(--faint); }
+  .stage .name { font-weight: 700; font-size: 14px; margin-top: 3px; }
+  .stage .q { font-size: 12px; color: var(--muted); margin-top: 4px; min-height: 2.4em; }
+  .stage .mark { margin-top: 9px; font-size: 12px; font-weight: 700; color: var(--ok); display: inline-flex; align-items: center; gap: 5px; }
+  .stage .mark::before { content: "✓"; }
+
+  /* ---------- practice ---------- */
+  .practice { display: grid; grid-template-columns: 1.1fr .9fr; gap: 14px; }
+  @media (max-width: 860px) { .practice { grid-template-columns: 1fr; } }
+  .steps { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 9px; }
+  .steps li { display: flex; gap: 11px; font-size: 13.5px; color: var(--muted); }
+  .steps .n { font-family: var(--mono); font-size: 11px; color: var(--accent-ink); font-weight: 700; padding-top: 1px; flex: none; width: 1.8em; }
+  .steps b { color: var(--ink); font-weight: 650; }
+  .commit-list { display: grid; gap: 8px; margin-top: 12px; }
+  .commit { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .commit code { font-family: var(--mono); font-size: 12px; color: var(--accent-ink); background: var(--accent-wash); padding: 1px 6px; border-radius: 5px; }
+  .commit .what { color: var(--muted); min-width: 0; }
+
+  .callout {
+    margin-top: 16px; padding: 14px 16px; border-radius: 10px;
+    background: var(--surface-2); border: 1px solid var(--line);
+    font-size: 13px; color: var(--muted);
+  }
+  .callout b { color: var(--ink); }
+
+  footer { border-top: 1px solid var(--line); margin-top: 48px; padding: 26px 0 46px; color: var(--faint); font-size: 12.5px; }
+  footer .wrap { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  footer code { font-family: var(--mono); }
+</style>
+
+<header class="top">
+  <div class="wrap top-inner">
+    <p class="eyebrow">Estado atual · validado contra o código · 2026-07-16</p>
+    <h1>Plataforma de Linha — arquitetura &amp; estado</h1>
+    <p class="lede">
+      Observabilidade de ponta a ponta, do clique do usuário ao registro no banco — agora
+      com o que saiu do diagrama e virou código. Esta página cruza a arquitetura em camadas
+      com o que está <strong>implementado</strong>, o que é <strong>parcial</strong> e o que
+      permanece <strong>planejado</strong>. 100% open source, custo mínimo.
+    </p>
+    <div class="legend">
+      <span class="lbl">Legenda:</span>
+      <span class="chip ok">Implementado</span>
+      <span class="chip partial">Parcial / fase 1</span>
+      <span class="chip plan">Planejado</span>
+      <span class="chip ci">verde no CI</span>
+    </div>
+
+    <div class="metrics">
+      <div class="metric"><div class="n">15</div><div class="k">domínios .NET (1 processo/domínio)</div></div>
+      <div class="metric"><div class="n">9</div><div class="k">contratos Avro em <code>schemas/</code></div></div>
+      <div class="metric"><div class="n">10</div><div class="k">ADRs de governança</div></div>
+      <div class="metric"><div class="n">24</div><div class="k">pipelines CI (1 por bloco)</div></div>
+      <div class="metric"><div class="n">6/6</div><div class="k">estágios acatech cobertos</div></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section>
+    <div class="sec-head">
+      <div>
+        <p class="eyebrow">Fluxo em camadas</p>
+        <h2>Do cliente ao dado — cada bloco emite log, trace e métrica</h2>
+      </div>
+      <p class="sec-note">A ordem é real: a requisição atravessa da borda até o dado, e a ingestão de linha entra em paralelo, direto da fábrica pro mesmo Kafka.</p>
+    </div>
+
+    <div class="grid cols-2">
+      <div class="card">
+        <span class="stripe"></span>
+        <h3><span class="ix">01</span> Cliente — PWA + Tauri <span class="chip ok" style="margin-left:auto">core web</span></h3>
+        <p>Painel admin e user, login com TOTP (RFC 6238), painel de linha ao vivo via SignalR. Um core web, três shells (Web/Desktop/Mobile).</p>
+        <div class="tags"><span class="tag">PWA instalável</span><span class="tag">RUM sem PII</span><span class="tag">JWT curto + refresh rotativo</span><span class="tag">WAF · ModSecurity/CRS</span></div>
+      </div>
+
+      <div class="card">
+        <span class="stripe"></span>
+        <h3><span class="ix">02</span> Gateway / BFF (YARP) <span class="chip ok" style="margin-left:auto">implementado</span></h3>
+        <p>Ponto único de entrada. Valida TOTP, emite JWT, RBAC/ABAC por planta/linha/turno, rate limiting distribuído e trace-id raiz (W3C).</p>
+        <div class="tags"><span class="tag hot">Gateway.Host</span><span class="tag">Identity</span><span class="tag">Platform.AccessControl</span><span class="tag">Valkey · token bucket</span></div>
+      </div>
+
+      <div class="card">
+        <span class="stripe"></span>
+        <h3><span class="ix">03</span> Ingestão de linha (edge) <span class="chip ok" style="margin-left:auto">implementado</span></h3>
+        <p>Fábrica → nuvem, path próprio. Modbus/MQTT → buffer store-and-forward → Kafka. Quality gate valida faixa, drift e agora a <strong>confiança do relógio</strong> antes do dado virar verdade.</p>
+        <div class="tags"><span class="tag hot">Edge.ProtocolGateway</span><span class="tag hot">Telemetry.Ingest</span><span class="tag">quarentena p/ rejeitada</span><span class="tag">chrony · NTP/PTP</span></div>
+      </div>
+
+      <div class="card">
+        <span class="stripe"></span>
+        <h3><span class="ix">04</span> Serviços de aplicação (.NET) <span class="chip ok" style="margin-left:auto">implementado</span></h3>
+        <p>Um processo por domínio, OpenTelemetry embutido, outbox pattern (evento na mesma transação do Postgres). Identity, Core.Execution, Notifications, Knowledge, Chatbot, Agents…</p>
+        <div class="tags"><span class="tag">ASP.NET Minimal API</span><span class="tag">HotChocolate (GraphQL)</span><span class="tag">Serilog + OTel</span><span class="tag">outbox → Kafka</span></div>
+      </div>
+
+      <div class="card">
+        <span class="stripe"></span>
+        <h3><span class="ix">05</span> Subsistema de IA (assíncrono) <span class="chip partial" style="margin-left:auto">GPU: 1× A2000 Ada</span></h3>
+        <p>Router/DLQ + workers por modelo, idempotência por job-id. LLM/visão/embeddings auto-hospedados — mas em 16 GB de VRAM é time-sharing com scale-to-zero, não um pod sempre-ligado por modelo.</p>
+        <div class="tags"><span class="tag hot">Ai.Router.Worker</span><span class="tag">Ai.Worker.Llm/Vision/Embeddings</span><span class="tag">KEDA scale-to-zero</span><span class="tag">Predictive · Decision.Engine</span></div>
+      </div>
+
+      <div class="card">
+        <span class="stripe"></span>
+        <h3><span class="ix">06</span> Dados <span class="chip ok" style="margin-left:auto">implementado</span></h3>
+        <p>Valkey (cache), PostgreSQL (verdade + PITR + réplica), JSONB+pgvector via GraphQL, VictoriaMetrics (TSDB), MinIO WORM (lake) com linhagem OpenLineage. Consultável direto por DuckDB.</p>
+        <div class="tags"><span class="tag hot">Data.Archiver</span><span class="tag">Valkey · Postgres · MinIO</span><span class="tag hot">DuckDB sobre o lake</span></div>
+      </div>
+    </div>
+
+    <div class="grid cols-2" style="margin-top:14px">
+      <div class="card" style="grid-column:1 / -1">
+        <span class="stripe" style="background:var(--ok)"></span>
+        <h3><span class="ix">07</span> Espinha de observabilidade <span class="chip ok" style="margin-left:auto">implementado</span></h3>
+        <p>Todo log, trace e métrica converge aqui — nada sai do funil. OTel Collector → Loki (logs), Tempo (traces), VictoriaMetrics (métricas + FinOps via OpenCost), Grafana (painel unificado). Cliente nativo Tauri segue a mesma regra: um core, três shells.</p>
+        <div class="tags"><span class="tag">OTel Collector</span><span class="tag">Loki · Tempo · VictoriaMetrics</span><span class="tag">Grafana + Alertmanager + ntfy</span><span class="tag">SLO · Pyrra</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <div>
+        <p class="eyebrow">Novidades desta rodada</p>
+        <h2>O que saiu do diagrama e virou código &amp; contrato</h2>
+      </div>
+      <p class="sec-note">Sete lacunas fechadas como governança (estilo ADR), contratos Avro e código de domínio — cada bloco validado no CI da main.</p>
+    </div>
+
+    <div class="grid cols-3">
+      <div class="card">
+        <span class="stripe"></span>
+        <h3>Modelo de ativos (ISA-95)</h3>
+        <p>Hierarquia Enterprise→Site→Area→Line→Cell→Unit. Multi-site sem quebrar o single-tenant por instância — isolamento por atributo ABAC, sem <code>tenant_id</code>.</p>
+        <div class="row"><span class="chip ok">implementado</span><span class="chip ci">CI</span></div>
+        <div class="tags"><span class="tag hot">schemas/ativo.avsc</span><span class="tag">modelo-de-ativos-isa95.md</span></div>
+      </div>
+
+      <div class="card">
+        <span class="stripe"></span>
+        <h3>Camada de OEE / KPI</h3>
+        <p>OEE = Disponibilidade × Performance × Qualidade como métrica derivada no TSDB, com motivo de parada classificado (as seis grandes perdas) e roll-up pela árvore de ativos.</p>
+        <div class="row"><span class="chip ok">implementado</span><span class="chip ci">CI</span></div>
+        <div class="tags"><span class="tag hot">schemas/parada-linha.avsc</span><span class="tag">oee-kpi-manufatura.md</span></div>
+      </div>
+
+      <div class="card">
+        <span class="stripe"></span>
+        <h3>Carga operacional (faseamento)</h3>
+        <p>Dia-1 mínimo vs. estado final para um time de 4. Corrige a premissa de IA: 1× A2000 Ada (16 GB) não é um “GPU pool” — scale-to-zero vira obrigatório.</p>
+        <div class="row"><span class="chip ok">documentado</span></div>
+        <div class="tags"><span class="tag">carga-operacional.md</span><span class="tag">Pi + servidor GPU</span></div>
+      </div>
+
+      <div class="card">
+        <span class="stripe"></span>
+        <h3>Segurança de runtime / SIEM</h3>
+        <p>Falco (DaemonSet) com regras da plataforma — shell em pod, saída OT contra o fluxo Purdue, tamper de binário, leitura de segredo. Funil separado da observabilidade operacional.</p>
+        <div class="row"><span class="chip ok">manifests + doc</span></div>
+        <div class="tags"><span class="tag hot">deploy/security/falco</span><span class="tag">seguranca-runtime-siem.md</span></div>
+      </div>
+
+      <div class="card">
+        <span class="stripe"></span>
+        <h3>Auditoria administrativa — fase 1</h3>
+        <p>Trilha append-only e redigida (senha/seed/segredo nunca entram). Outbox Postgres → relay Kafka → bucket WORM (~7 anos), separado do log de acesso de retenção curta.</p>
+        <div class="row"><span class="chip partial">fase 1</span><span class="chip ci">CI</span></div>
+        <div class="tags"><span class="tag hot">Platform.Audit</span><span class="tag">schemas/auditoria-admin.avsc</span><span class="tag">data-archiver-audit</span></div>
+      </div>
+
+      <div class="card">
+        <span class="stripe"></span>
+        <h3>Sincronização de tempo (OT)</h3>
+        <p>Campo <code>clock_source</code> no contrato (BACKWARD) + regra no quality gate: relógio não confiável é rejeitado antes de drift/staleness. chrony nos nós de borda.</p>
+        <div class="row"><span class="chip partial">gate pronto · edge pendente</span><span class="chip ci">CI</span></div>
+        <div class="tags"><span class="tag hot">sensor-reading.avsc</span><span class="tag">QualityGate.requireSyncedClock</span><span class="tag">chrony.conf</span></div>
+      </div>
+
+      <div class="card">
+        <span class="stripe"></span>
+        <h3>Motor de query no lake</h3>
+        <p>DuckDB (não Trino) lê o JSONL.gz particionado do MinIO direto, com predicate pushdown em <code>dt=/hour=</code>. Parquet fica como otimização de fase 2, com gatilho.</p>
+        <div class="row"><span class="chip ok">ADR + queries</span></div>
+        <div class="tags"><span class="tag hot">deploy/analytics/duckdb</span><span class="tag">motor-query-lake.md</span></div>
+      </div>
+
+      <div class="card" style="display:flex;flex-direction:column;justify-content:center;background:var(--surface-2);border-style:dashed">
+        <h3 style="color:var(--muted)">Em aberto (rollout)</h3>
+        <p>Outros emissores de auditoria (edge cert-revoke, decision override) · edge declarar <code>clock_source</code> · writer Parquet quando o scan justificar.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <div>
+        <p class="eyebrow">Governança — cross-cutting</p>
+        <h2>Dez ADRs: o que não é código de negócio, mas é obrigatório em produção</h2>
+      </div>
+      <p class="sec-note">Decisões registradas no repo (<code>docs/governanca/</code>), validadas contra o código.</p>
+    </div>
+
+    <div class="adrs">
+      <div class="adr"><span class="chip ok">ok</span><div class="body"><div class="t">Classificação de PII &amp; LGPD</div><div class="d">Inventário, criptografia em repouso, mascaramento em log</div><div class="file">dados-pii-lgpd.md</div></div></div>
+      <div class="adr"><span class="chip ok">ok</span><div class="body"><div class="t">Continuidade — RPO/RTO</div><div class="d">WAL archiving, PITR caseiro, réplica, game day</div><div class="file">continuidade-rpo-rto.md</div></div></div>
+      <div class="adr"><span class="chip ok">ok</span><div class="body"><div class="t">Avaliação &amp; guardrails de IA</div><div class="d">Eval set versionado paralelo ao TDD</div><div class="file">avaliacao-ia.md</div></div></div>
+      <div class="adr"><span class="chip ok">ok</span><div class="body"><div class="t">Multi-tenant (ADR)</div><div class="d">Single-tenant por instância, multi-planta por ABAC</div><div class="file">multi-tenant.md</div></div></div>
+      <div class="adr"><span class="chip ok">novo</span><div class="body"><div class="t">Modelo de ativos (ISA-95)</div><div class="d">Hierarquia multi-site, sem tenant_id</div><div class="file">modelo-de-ativos-isa95.md</div></div></div>
+      <div class="adr"><span class="chip ok">novo</span><div class="body"><div class="t">OEE &amp; KPI de manufatura</div><div class="d">Métrica derivada no TSDB + motivo de parada</div><div class="file">oee-kpi-manufatura.md</div></div></div>
+      <div class="adr"><span class="chip ok">novo</span><div class="body"><div class="t">Carga operacional</div><div class="d">Faseamento dia-1 vs. estado final; realidade da GPU</div><div class="file">carga-operacional.md</div></div></div>
+      <div class="adr"><span class="chip ok">novo</span><div class="body"><div class="t">Segurança de runtime / SIEM</div><div class="d">Falco + funil de segurança separado</div><div class="file">seguranca-runtime-siem.md</div></div></div>
+      <div class="adr"><span class="chip ok">novo</span><div class="body"><div class="t">Sincronização de tempo (OT)</div><div class="d">clock_source no contrato + regra do gate</div><div class="file">sincronizacao-tempo-ot.md</div></div></div>
+      <div class="adr"><span class="chip ok">novo</span><div class="body"><div class="t">Motor de query no lake</div><div class="d">DuckDB sobre JSONL particionado; Parquet fase 2</div><div class="file">motor-query-lake.md</div></div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <div>
+        <p class="eyebrow">Régua de maturidade</p>
+        <h2>acatech Industrie 4.0 — os 6 estágios cobertos</h2>
+      </div>
+      <p class="sec-note">Com o loop fechado do estágio 6 nascendo com guardrails: envelope de operação, aprovação humana por criticidade e auditoria total.</p>
+    </div>
+    <div class="stages">
+      <div class="stage"><div class="s">Estágio 1</div><div class="name">Computerização</div><div class="q">Sistemas digitais isolados</div><span class="mark">serviços .NET, PWA, PLCs</span></div>
+      <div class="stage"><div class="s">Estágio 2</div><div class="name">Conectividade</div><div class="q">O dado flui entre camadas</div><span class="mark">Kafka, edge, mTLS</span></div>
+      <div class="stage"><div class="s">Estágio 3</div><div class="name">Visibilidade</div><div class="q">“O que está acontecendo?”</div><span class="mark">obs, TSDB, OEE ao vivo</span></div>
+      <div class="stage"><div class="s">Estágio 4</div><div class="name">Transparência</div><div class="q">“Por que acontece?”</div><span class="mark">trace-id, linhagem, query no lake</span></div>
+      <div class="stage"><div class="s">Estágio 5</div><div class="name">Preditivo</div><div class="q">“O que vai acontecer?”</div><span class="mark">feature store, scoring online</span></div>
+      <div class="stage"><div class="s">Estágio 6</div><div class="name">Adaptabilidade</div><div class="q">“Responder sozinho?”</div><span class="mark">Decision Engine + agentes</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <div>
+        <p class="eyebrow">Prática de engenharia</p>
+        <h2>TDD é gate de CI, não cultura</h2>
+      </div>
+    </div>
+    <div class="practice">
+      <div class="card">
+        <span class="stripe"></span>
+        <h3>Pipeline por bloco</h3>
+        <ol class="steps">
+          <li><span class="n">00</span><span><b>Gate TDD.</b> PR que muda <code>src/**</code> sem tocar no <code>*.Tests</code> correspondente é reprovado.</span></li>
+          <li><span class="n">01</span><span><b>Build</b> multi-stage, warnings = erros, nullable, cobertura mínima 80% no domínio.</span></li>
+          <li><span class="n">02</span><span><b>Testes</b> unitário → contrato → SAST; edge contra simulador de linha, não hardware.</span></li>
+          <li><span class="n">03</span><span><b>Publish</b> imagem assinada (cosign) + SBOM; o cluster recusa imagem não assinada.</span></li>
+          <li><span class="n">04</span><span><b>Deploy (GitOps)</b> ArgoCD/Flux; canary + rollback via observabilidade.</span></li>
+        </ol>
+      </div>
+      <div class="card">
+        <span class="stripe" style="background:var(--ok)"></span>
+        <h3>Esta rodada — verde na main</h3>
+        <div class="commit-list">
+          <div class="commit"><code>29756f2</code><span class="what">auditoria fase 1 · <b>identity + platform</b> ✓</span></div>
+          <div class="commit"><code>30d1c6a</code><span class="what">tempo OT · <b>telemetry-ingest + edge</b> ✓</span></div>
+          <div class="commit"><code>beb67e5</code><span class="what">query no lake · <b>docs-pages</b> ✓</span></div>
+        </div>
+        <div class="callout">
+          O SDK .NET não instala neste ambiente, então o <b>CI da main foi o compilador</b>:
+          cada push rodou build + testes reais no runner. Dois erros de analisador/CI
+          (<code>CA1861</code>, escape <code>%2c</code> do coverlet) foram pegos e corrigidos assim.
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Plataforma de Linha · monorepo <code>friendly-octo-guide</code> · 100% open source, custo mínimo</span>
+    <span>Snapshot validado contra o código · 2026-07-16</span>
+  </div>
+</footer>

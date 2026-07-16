@@ -1,0 +1,16 @@
+{
+  "type": "record",
+  "name": "CausaRaiz",
+  "namespace": "linha.causaraiz.v1",
+  "doc": "Nó de causa raiz no modelo de Ishikawa (espinha de peixe). Liga um sintoma (defeito/parada) a uma causa, classificada numa das 6 categorias (6M). Base compartilhada pelos iDMSS (Victor/Jeymerson) e pela visão (Hallyson). Encoding JSON na fase 0. Compatibilidade BACKWARD obrigatória.",
+  "fields": [
+    { "name": "causa_id", "type": { "type": "string", "logicalType": "uuid" } },
+    { "name": "ativo_id", "type": "string", "doc": "Nó ISA-95 onde a causa se manifesta." },
+    { "name": "categoria", "type": { "type": "enum", "name": "CategoriaIshikawa", "symbols": ["Metodo", "Maquina", "Material", "MaoDeObra", "Medicao", "MeioAmbiente", "Indefinida"] }, "doc": "6M: Método, Máquina, Material, Mão de obra, Medição, Meio ambiente." },
+    { "name": "sintoma", "type": "string", "doc": "O que foi observado: código de defeito, motivo de parada." },
+    { "name": "causa", "type": "string", "doc": "A causa raiz descrita." },
+    { "name": "motivo_codigo", "type": ["null", "string"], "default": null, "doc": "Liga ao motivo de parada do parada-linha.avsc quando aplica." },
+    { "name": "confianca", "type": "double", "default": 0.0, "doc": "Confiança 0..1 na hipótese de causa — alimenta o ranking e a explicabilidade (XAI)." },
+    { "name": "registrado_em", "type": { "type": "long", "logicalType": "timestamp-millis" } }
+  ]
+}
